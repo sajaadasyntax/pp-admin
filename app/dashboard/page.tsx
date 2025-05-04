@@ -1,9 +1,12 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const router = useRouter();
 
   // Mock statistics data
   const stats = [
@@ -45,6 +48,11 @@ export default function Dashboard() {
     },
   ];
 
+  // Function to handle navigation
+  const navigateTo = (path: string) => {
+    router.push(path);
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
@@ -69,7 +77,16 @@ export default function Dashboard() {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="app-card transition-all hover:shadow-md overflow-hidden"
+            className="app-card transition-all hover:shadow-md overflow-hidden cursor-pointer"
+            onClick={() => {
+              const paths = [
+                "/dashboard/reports", 
+                "/dashboard/memberships", 
+                "/dashboard/subscriptions", 
+                "/dashboard/voting"
+              ];
+              navigateTo(paths[index]);
+            }}
           >
             <div className="flex items-center">
               <div
@@ -123,16 +140,28 @@ export default function Dashboard() {
       <div className="app-card">
         <h2 className="mb-4 text-lg font-medium text-[var(--neutral-900)]">إجراءات سريعة</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          <button className="app-button-primary">
+          <button 
+            className="app-button-primary"
+            onClick={() => navigateTo("/dashboard/reports")}
+          >
             إنشاء تقرير
           </button>
-          <button className="app-button-secondary">
+          <button 
+            className="app-button-secondary"
+            onClick={() => navigateTo("/dashboard/memberships")}
+          >
             إدارة العضويات
           </button>
-          <button className="app-button rounded-full bg-[var(--accent-100)] text-[var(--accent-700)] hover:bg-[var(--accent-200)]">
+          <button 
+            className="app-button rounded-full bg-[var(--accent-100)] text-[var(--accent-700)] hover:bg-[var(--accent-200)]"
+            onClick={() => navigateTo("/dashboard/subscriptions")}
+          >
             إدارة الاشتراكات
           </button>
-          <button className="app-button rounded-full bg-[var(--success-100)] text-[var(--success-600)] hover:bg-[var(--success-200)]">
+          <button 
+            className="app-button rounded-full bg-[var(--success-100)] text-[var(--success-600)] hover:bg-[var(--success-200)]"
+            onClick={() => navigateTo("/dashboard/voting")}
+          >
             إنشاء تصويت
           </button>
         </div>

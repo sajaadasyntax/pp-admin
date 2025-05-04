@@ -30,6 +30,7 @@ export interface Subscription {
   userName: string;
   level: UserLevel;
   type: string;
+  amount: number;
   startDate: string;
   endDate: string;
   status: "active" | "disabled";

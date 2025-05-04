@@ -20,6 +20,7 @@ export default function SubscriptionsPage() {
         userName: "أحمد محمد",
         level: "الحي",
         type: "شهري",
+        amount: 50,
         startDate: "2023-10-15",
         endDate: "2023-11-15",
         status: "active",
@@ -30,6 +31,7 @@ export default function SubscriptionsPage() {
         userName: "سارة علي",
         level: "الوحدة الإدارية",
         type: "سنوي",
+        amount: 500,
         startDate: "2023-10-10",
         endDate: "2024-10-10",
         status: "active",
@@ -40,6 +42,7 @@ export default function SubscriptionsPage() {
         userName: "محمد خالد",
         level: "المحلية",
         type: "سنوي",
+        amount: 750,
         startDate: "2023-09-30",
         endDate: "2024-09-30",
         status: "disabled",
@@ -51,6 +54,7 @@ export default function SubscriptionsPage() {
         userName: "فاطمة أحمد",
         level: "الولاية",
         type: "شهري",
+        amount: 100,
         startDate: "2023-09-25",
         endDate: "2023-10-25",
         status: "active",
@@ -61,6 +65,7 @@ export default function SubscriptionsPage() {
         userName: "عمر خالد",
         level: "الإتحادية",
         type: "سنوي",
+        amount: 1000,
         startDate: "2023-09-20",
         endDate: "2024-09-20",
         status: "disabled",
@@ -167,6 +172,12 @@ export default function SubscriptionsPage() {
                   scope="col"
                   className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
                 >
+                  المبلغ
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
                   تاريخ البدء
                 </th>
                 <th
@@ -202,6 +213,9 @@ export default function SubscriptionsPage() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {subscription.type}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    {subscription.amount} جنيه
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                     {subscription.startDate}
