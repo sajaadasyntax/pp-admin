@@ -3,8 +3,63 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary color palette */
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-200: #c7d2fe;
+  --primary-300: #a5b4fc;
+  --primary-400: #818cf8;
+  --primary-500: #6366f1;
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-800: #3730a3;
+  --primary-900: #312e81;
+  
+  /* Secondary/accent color */
+  --accent-50: #fefce8;
+  --accent-100: #fef9c3;
+  --accent-200: #fef08a;
+  --accent-300: #fde047;
+  --accent-400: #facc15;
+  --accent-500: #eab308;
+  --accent-600: #ca8a04;
+  --accent-700: #a16207;
+  --accent-800: #854d0e;
+  --accent-900: #713f12;
+  
+  /* Success color */
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  
+  /* Error color */
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  
+  /* Neutral colors */
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+  
+  /* UI color definitions */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --button-primary: #4f46e5;
+  --button-primary-foreground: #ffffff;
+  --button-secondary: #e0e7ff;
+  --button-secondary-foreground: #4338ca;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +73,38 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)];
+  }
+}
+
+@layer components {
+  .app-button {
+    @apply flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition-colors;
+  }
+  
+  .app-button-primary {
+    @apply app-button bg-[var(--button-primary)] text-[var(--button-primary-foreground)] hover:opacity-90;
+  }
+  
+  .app-button-secondary {
+    @apply app-button bg-[var(--button-secondary)] text-[var(--button-secondary-foreground)] hover:bg-[var(--primary-200)];
+  }
+  
+  .app-button-danger {
+    @apply app-button bg-[var(--error-100)] text-[var(--error-600)] hover:bg-[var(--error-200)];
+  }
+  
+  .app-button-success {
+    @apply app-button bg-[var(--success-100)] text-[var(--success-600)] hover:bg-[var(--success-200)];
+  }
+  
+  .app-card {
+    @apply rounded-xl bg-[var(--card)] p-4 shadow-sm;
+  }
 }
 
 @layer utilities {
