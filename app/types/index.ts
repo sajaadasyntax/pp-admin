@@ -69,4 +69,21 @@ export interface Notification {
   read: boolean;
   level: UserLevel;
   targetUserId?: string;
+}
+
+// Deletion Request type
+export interface DeletionRequest {
+  id: string;
+  requestType: "user" | "report" | "voting";
+  itemId: string;
+  itemName: string;
+  requestReason: string;
+  requestDate: string;
+  requestedBy: {
+    id: string;
+    name: string;
+    level: UserLevel;
+  };
+  status: "pending" | "approved" | "rejected";
+  actionDate?: string;
 } 

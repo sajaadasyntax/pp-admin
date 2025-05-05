@@ -52,6 +52,8 @@ export default function DashboardLayout({
     { name: "الاشتراكات", path: "/dashboard/subscriptions" },
     { name: "التصويت", path: "/dashboard/voting" },
     { name: "الإشعارات", path: "/dashboard/notifications" },
+    // Show deletion requests to all users for now
+    { name: "طلبات الحذف", path: "/dashboard/deletion-requests" },
   ];
 
   const toggleMobileMenu = () => {

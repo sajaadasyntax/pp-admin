@@ -9,6 +9,10 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [showDeleteRequestModal, setShowDeleteRequestModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteRequestSuccess, setDeleteRequestSuccess] = useState(false);
 
   // Get mock reports data
   useEffect(() => {
@@ -85,21 +89,45 @@ export default function ReportsPage() {
     setLoading(false);
   }, [user]);
 
-  // Delete report handler
+  // Check if user can delete reports directly
+  const canDeleteDirectly = user?.level === "مدير النظام";
+
+  // Check if user should have a delete request button
+  const canRequestDeletion = user?.level !== "مدير النظام" && user?.level !== "الحي" && user?.level !== "الوحدة الإدارية";
+
+  // Handle report deletion
   const handleDeleteReport = (id: string) => {
-    // Check if user has permission to delete reports
-    // Only المحلية level and above can delete reports
-    const canDelete = ["المحلية", "الولاية", "الإتحادية", "مدير النظام"].includes(
-      user?.level || ""
-    );
-
-    if (!canDelete) {
-      alert("ليس لديك صلاحية لحذف التقارير");
-      return;
+    if (canDeleteDirectly) {
+      setReports((prevReports) => prevReports.filter((report) => report.id !== id));
     }
+  };
 
-    // In a real app, this would be an API call
-    setReports((prevReports) => prevReports.filter((report) => report.id !== id));
+  // Open delete request modal
+  const openDeleteRequestModal = (report: Report) => {
+    setSelectedReport(report);
+    setShowDeleteRequestModal(true);
+  };
+
+  // Submit delete request
+  const handleSubmitDeleteRequest = () => {
+    if (!selectedReport || !deleteReason) return;
+    
+    // In a real app, this would call an API to create a deletion request
+    console.log("Delete request submitted:", {
+      reportId: selectedReport.id,
+      reportTitle: selectedReport.title,
+      reason: deleteReason,
+      requestedBy: user?.name,
+      requestedByLevel: user?.level
+    });
+    
+    setDeleteRequestSuccess(true);
+    setTimeout(() => {
+      setShowDeleteRequestModal(false);
+      setSelectedReport(null);
+      setDeleteReason("");
+      setDeleteRequestSuccess(false);
+    }, 2000);
   };
 
   // Filter reports
@@ -210,26 +238,82 @@ export default function ReportsPage() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleDeleteReport(report.id)}
-                        className="app-button-danger !py-1 !px-3"
-                        disabled={
-                          !["المحلية", "الولاية", "الإتحادية", "مدير النظام"].includes(
-                            user?.level || ""
-                          )
-                        }
-                      >
-                        حذف
-                      </button>
-                      <button className="app-button-secondary !py-1 !px-3">
-                        عرض
-                      </button>
+                      {canDeleteDirectly && (
+                        <button
+                          onClick={() => handleDeleteReport(report.id)}
+                          className="app-button-danger !py-1 !px-3"
+                        >
+                          حذف
+                        </button>
+                      )}
+                      {canRequestDeletion && !canDeleteDirectly && (
+                        <button
+                          onClick={() => openDeleteRequestModal(report)}
+                          className="app-button-secondary !py-1 !px-3"
+                        >
+                          طلب حذف
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete Request Modal */}
+      {showDeleteRequestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="app-card w-full max-w-md">
+            <h2 className="mb-4 text-lg font-bold text-[var(--neutral-900)]">
+              طلب حذف تقرير
+            </h2>
+            {deleteRequestSuccess ? (
+              <div className="rounded-md bg-green-100 p-4 text-green-700">
+                تم إرسال طلب الحذف بنجاح! سيقوم مدير النظام بمراجعة طلبك.
+              </div>
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-[var(--neutral-600)]">
+                  سيتم إرسال طلب حذف التقرير &quot;{selectedReport?.title}&quot; إلى مدير النظام للمراجعة والموافقة.
+                </p>
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-medium text-[var(--neutral-700)]">
+                    سبب طلب الحذف
+                  </label>
+                  <textarea
+                    className="w-full rounded-md border border-[var(--neutral-300)] p-2 text-sm"
+                    rows={3}
+                    placeholder="يرجى كتابة سبب الحذف..."
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    dir="rtl"
+                  ></textarea>
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => {
+                      setShowDeleteRequestModal(false);
+                      setSelectedReport(null);
+                      setDeleteReason("");
+                    }}
+                    className="rounded bg-[var(--neutral-100)] px-4 py-2 text-sm text-[var(--neutral-700)] hover:bg-[var(--neutral-200)]"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={handleSubmitDeleteRequest}
+                    className="rounded bg-[var(--primary-600)] px-4 py-2 text-sm text-white hover:bg-[var(--primary-700)]"
+                    disabled={!deleteReason}
+                  >
+                    إرسال الطلب
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
