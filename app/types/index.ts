@@ -86,4 +86,35 @@ export interface DeletionRequest {
   };
   status: "pending" | "approved" | "rejected";
   actionDate?: string;
+}
+
+// Voting Committee type
+export interface VotingCommittee {
+  id: string;
+  name: string;
+  description: string;
+  votingId: string;
+  votingTitle: string;
+  startDate: string;
+  endDate: string;
+  status: "active" | "inactive" | "completed";
+  members: VotingCommitteeMember[];
+  createdBy: {
+    id: string;
+    name: string;
+    level: UserLevel;
+  };
+  createdAt: string;
+}
+
+// Voting Committee Member type
+export interface VotingCommitteeMember {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: "chairman" | "secretary" | "member";
+  status: "active" | "inactive";
+  temporaryPassword?: string;
+  lastLogin?: string;
 } 

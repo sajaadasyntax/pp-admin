@@ -51,6 +51,7 @@ export default function DashboardLayout({
     { name: "العضويات", path: "/dashboard/memberships" },
     { name: "الاشتراكات", path: "/dashboard/subscriptions" },
     { name: "التصويت", path: "/dashboard/voting" },
+    { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
     { name: "الإشعارات", path: "/dashboard/notifications" },
     // Show deletion requests to all users for now
     { name: "طلبات الحذف", path: "/dashboard/deletion-requests" },
