@@ -309,7 +309,7 @@ export default function VotingCommitteePage() {
           ...member,
           id: `member-${Date.now()}-${index}`,
           temporaryPassword: generateTemporaryPassword(),
-        })),
+        } as VotingCommitteeMember)),
         createdBy: {
           id: user.id,
           name: user.name,
@@ -337,14 +337,14 @@ export default function VotingCommitteePage() {
               members: members.map((member) => {
                 // For existing members, keep their ID
                 if ("id" in member) {
-                  return member;
+                  return member as VotingCommitteeMember;
                 }
                 // For new members, generate an ID and temporary password
                 return {
                   ...member,
                   id: `member-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
                   temporaryPassword: generateTemporaryPassword(),
-                };
+                } as VotingCommitteeMember;
               }),
             }
           : committee
