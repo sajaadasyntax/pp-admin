@@ -117,4 +117,51 @@ export interface VotingCommitteeMember {
   status: "active" | "inactive";
   temporaryPassword?: string;
   lastLogin?: string;
+}
+
+// Bulletin (النشرة) type
+export interface Bulletin {
+  id: string;
+  title: string;
+  content: string;
+  publishDate: string;
+  expiryDate?: string;
+  status: "draft" | "published" | "archived";
+  attachments?: BulletinAttachment[];
+  level: UserLevel;
+  createdBy: {
+    id: string;
+    name: string;
+    level: UserLevel;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Bulletin Attachment type
+export interface BulletinAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+// Archive (الأرشيف) type
+export interface ArchiveItem {
+  id: string;
+  title: string;
+  description: string;
+  category: "document" | "report" | "media" | "other";
+  fileUrl?: string;
+  thumbnailUrl?: string;
+  uploadDate: string;
+  level: UserLevel;
+  tags?: string[];
+  uploadedBy: {
+    id: string;
+    name: string;
+    level: UserLevel;
+  };
 } 
