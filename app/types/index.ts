@@ -9,6 +9,11 @@ export interface Report {
   level: UserLevel;
   createdBy: string;
   status: "pending" | "resolved" | "rejected";
+  submittedAt?: string;
+  updatedAt?: string;
+  type?: string;
+  attachmentName?: string | null;
+  createdById?: string;
 }
 
 // Membership type
@@ -17,10 +22,21 @@ export interface Membership {
   userId: string;
   userName: string;
   level: UserLevel;
+  hierarchyText?: string; // New field for hierarchy display
   status: "active" | "disabled";
   email: string;
   phone: string;
   joinDate: string;
+  hierarchy?: {
+    regionId?: string;
+    regionName?: string;
+    localityId?: string;
+    localityName?: string;
+    adminUnitId?: string;
+    adminUnitName?: string;
+    districtId?: string;
+    districtName?: string;
+  };
 }
 
 // Subscription type
@@ -46,6 +62,7 @@ export interface Voting {
   startDate: string;
   endDate: string;
   targetLevel: UserLevel;
+  voteType?: "electoral" | "opinion";
   createdBy: {
     id: string;
     name: string;
@@ -124,17 +141,27 @@ export interface Bulletin {
   id: string;
   title: string;
   content: string;
-  publishDate: string;
+  date: string;
+  publishDate?: string;
   expiryDate?: string;
-  status: "draft" | "published" | "archived";
+  status?: "draft" | "published" | "archived";
+  image?: string;
   attachments?: BulletinAttachment[];
-  level: UserLevel;
-  createdBy: {
+  level?: UserLevel;
+  published?: boolean;
+  
+  // Hierarchy targeting fields
+  targetRegionId?: string;
+  targetLocalityId?: string;
+  targetAdminUnitId?: string;
+  targetDistrictId?: string;
+  
+  createdBy?: {
     id: string;
     name: string;
     level: UserLevel;
   };
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -159,9 +186,10 @@ export interface ArchiveItem {
   uploadDate: string;
   level: UserLevel;
   tags?: string[];
+  size?: string;
   uploadedBy: {
     id: string;
     name: string;
     level: UserLevel;
   };
-} 
+}

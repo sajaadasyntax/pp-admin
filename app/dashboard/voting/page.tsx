@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Voting } from "../../types";
 import { UserLevel } from "../../context/AuthContext";
+import { apiClient } from "../../context/apiContext";
+import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
 
 export default function VotingPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [votings, setVotings] = useState<Voting[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -17,125 +19,183 @@ export default function VotingPage() {
   const [newVotingDescription, setNewVotingDescription] = useState("");
   const [newVotingOptions, setNewVotingOptions] = useState<string[]>(["", ""]);
   const [targetLevel, setTargetLevel] = useState<UserLevel | "">("");
+  const [voteType, setVoteType] = useState<"opinion" | "electoral">("opinion");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
 
-  // Get mock votings data
+  // Get real votings data from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const mockVotings: Voting[] = [
-      {
-        id: "1",
-        title: "التصويت على المشروع التنموي الجديد",
-        description: "اختيار أحد المشاريع التنموية المقترحة للحي",
-        options: [
-          { id: "opt1", text: "مشروع المركز الثقافي", votes: 120 },
-          { id: "opt2", text: "مشروع التشجير", votes: 85 },
-          { id: "opt3", text: "مشروع الملاعب الرياضية", votes: 150 },
-        ],
-        startDate: "2023-10-10",
-        endDate: "2023-10-20",
-        targetLevel: "الحي",
-        createdBy: {
-          id: "u1",
-          name: "أحمد محمد",
-          level: "الوحدة الإدارية",
-        },
-        status: "active",
-      },
-      {
-        id: "2",
-        title: "التصويت على ميزانية التعليم",
-        description: "تحديد نسبة توزيع ميزانية التعليم على المناطق المختلفة",
-        options: [
-          { id: "opt1", text: "80% مناطق نائية، 20% مدن", votes: 45 },
-          { id: "opt2", text: "70% مناطق نائية، 30% مدن", votes: 65 },
-          { id: "opt3", text: "60% مناطق نائية، 40% مدن", votes: 30 },
-        ],
-        startDate: "2023-09-20",
-        endDate: "2023-10-05",
-        targetLevel: "الوحدة الإدارية",
-        createdBy: {
-          id: "u2",
-          name: "محمد علي",
-          level: "المحلية",
-        },
-        status: "closed",
-      },
-      {
-        id: "3",
-        title: "الاستطلاع حول مشروع إعادة التدوير",
-        description: "استطلاع آراء السكان حول مشروع إعادة التدوير المزمع تنفيذه",
-        options: [
-          { id: "opt1", text: "موافق بشدة", votes: 230 },
-          { id: "opt2", text: "موافق", votes: 180 },
-          { id: "opt3", text: "محايد", votes: 90 },
-          { id: "opt4", text: "غير موافق", votes: 45 },
-          { id: "opt5", text: "غير موافق بشدة", votes: 30 },
-        ],
-        startDate: "2023-10-25",
-        endDate: "2023-11-05",
-        targetLevel: "المحلية",
-        createdBy: {
-          id: "u3",
-          name: "عبدالله خالد",
-          level: "الولاية",
-        },
-        status: "upcoming",
-      },
-    ];
+    const fetchVotingItems = async () => {
+      // Use fallback to cookie if token is not in context
+      if (!token) {
+        console.log('No token in context, checking cookies...');
+        const cookieToken = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('token='))
+          ?.split('=')[1];
+          
+        if (!cookieToken) {
+          console.log('No token available in cookies either, cannot fetch voting items');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Found token in cookies, proceeding with fetch');
+      }
 
-    // Filter votings based on user level
-    const filteredVotings = mockVotings.filter((voting) => {
-      // Admin can see all votings created by their level or higher levels
-      // or targeted to their level or lower levels
-      const levels: Record<string, number> = {
-        "الحي": 1,
-        "الوحدة الإدارية": 2,
-        "المحلية": 3,
-        "الولاية": 4,
-        "الإتحادية": 5,
-        "مدير النظام": 6,
-      };
+      try {
+        setLoading(true);
+        console.log('Fetching voting items...');
+        
+        // Use cookie token as fallback if context token is not available
+        const cookieToken = !token ? document.cookie
+          .split('; ')
+          .find(row => row.startsWith('token='))
+          ?.split('=')[1] : null;
+          
+        const effectiveToken = token || cookieToken;
+        
+        if (!effectiveToken) {
+          throw new Error('No authentication token available');
+        }
+        
+        const votingData = await apiClient.voting.getAllVotingItems(effectiveToken);
+        console.log('Voting items fetched:', votingData);
 
-      const userLevelValue = user?.level ? levels[user.level] : 0;
-      const targetLevelValue = levels[voting.targetLevel];
-      const creatorLevelValue = levels[voting.createdBy.level];
+        if (Array.isArray(votingData)) {
+          // Filter votings based on user level
+          const filteredVotings = votingData.filter((voting) => {
+            // Admin can see all votings created by their level or higher levels
+            // or targeted to their level or lower levels
+            const levels: Record<string, number> = {
+              "الحي": 1,
+              "الوحدة الإدارية": 2,
+              "المحلية": 3,
+              "الولاية": 4,
+              "الإتحادية": 5,
+              "مدير النظام": 6,
+            };
 
-      return (
-        targetLevelValue <= userLevelValue || creatorLevelValue >= userLevelValue
-      );
-    });
+            const userLevelValue = user?.level ? levels[user.level] : 0;
+            const targetLevelValue = levels[voting.targetLevel];
+            const creatorLevelValue = levels[voting.createdBy.level];
 
-    setVotings(filteredVotings);
-    setLoading(false);
+            return (
+              targetLevelValue <= userLevelValue || creatorLevelValue >= userLevelValue
+            );
+          });
+
+          setVotings(filteredVotings);
+        } else {
+          console.error('Unexpected response format from API:', votingData);
+          setVotings([]);
+        }
+      } catch (error) {
+        console.error('Error fetching voting items:', error);
+        // If API fails, use mock data for development
+        const mockVotings: Voting[] = [
+          {
+            id: "1",
+            title: "التصويت على المشروع التنموي الجديد",
+            description: "اختيار أحد المشاريع التنموية المقترحة للحي",
+            options: [
+              { id: "opt1", text: "مشروع المركز الثقافي", votes: 120 },
+              { id: "opt2", text: "مشروع التشجير", votes: 85 },
+              { id: "opt3", text: "مشروع الملاعب الرياضية", votes: 150 },
+            ],
+            startDate: "2023-10-10",
+            endDate: "2023-10-20",
+            targetLevel: "الحي",
+            createdBy: {
+              id: "u1",
+              name: "أحمد محمد",
+              level: "الوحدة الإدارية",
+            },
+            status: "active",
+          },
+          {
+            id: "2",
+            title: "التصويت على ميزانية التعليم",
+            description: "تحديد نسبة توزيع ميزانية التعليم على المناطق المختلفة",
+            options: [
+              { id: "opt1", text: "80% مناطق نائية، 20% مدن", votes: 45 },
+              { id: "opt2", text: "70% مناطق نائية، 30% مدن", votes: 65 },
+              { id: "opt3", text: "60% مناطق نائية، 40% مدن", votes: 30 },
+            ],
+            startDate: "2023-09-20",
+            endDate: "2023-10-05",
+            targetLevel: "الوحدة الإدارية",
+            createdBy: {
+              id: "u2",
+              name: "محمد علي",
+              level: "المحلية",
+            },
+            status: "closed",
+          },
+          {
+            id: "3",
+            title: "الاستطلاع حول مشروع إعادة التدوير",
+            description: "استطلاع آراء السكان حول مشروع إعادة التدوير المزمع تنفيذه",
+            options: [
+              { id: "opt1", text: "موافق بشدة", votes: 230 },
+              { id: "opt2", text: "موافق", votes: 180 },
+              { id: "opt3", text: "محايد", votes: 90 },
+              { id: "opt4", text: "غير موافق", votes: 45 },
+              { id: "opt5", text: "غير موافق بشدة", votes: 30 },
+            ],
+            startDate: "2023-10-25",
+            endDate: "2023-11-05",
+            targetLevel: "المحلية",
+            createdBy: {
+              id: "u3",
+              name: "عبدالله خالد",
+              level: "الولاية",
+            },
+            status: "upcoming",
+          },
+        ];
+        setVotings(mockVotings);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVotingItems();
   }, [user]);
 
   // Add a new option to the new voting form
   const addOption = () => {
-    setNewVotingOptions([...newVotingOptions, ""]);
+    setNewVotingOptions((prevOptions) => [...prevOptions, ""]);
   };
 
   // Remove an option from the new voting form
   const removeOption = (index: number) => {
     if (newVotingOptions.length <= 2) return; // Keep at least 2 options
-    const updatedOptions = [...newVotingOptions];
-    updatedOptions.splice(index, 1);
-    setNewVotingOptions(updatedOptions);
+    setNewVotingOptions((prevOptions) => {
+      const updatedOptions = [...prevOptions];
+      updatedOptions.splice(index, 1);
+      return updatedOptions;
+    });
   };
 
   // Handle option change in the new voting form
   const handleOptionChange = (index: number, value: string) => {
-    const updatedOptions = [...newVotingOptions];
-    updatedOptions[index] = value;
-    setNewVotingOptions(updatedOptions);
+    setNewVotingOptions((prevOptions) => {
+      const updatedOptions = [...prevOptions];
+      updatedOptions[index] = value;
+      return updatedOptions;
+    });
   };
 
   // Create a new voting
-  const handleCreateVoting = (e: React.FormEvent) => {
+  const handleCreateVoting = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user || !token) {
+      alert("يجب تسجيل الدخول لإنشاء تصويت جديد");
+      return;
+    }
     
     // Check if user can create voting for this level
     const levels: Record<string, number> = {
@@ -149,6 +209,12 @@ export default function VotingPage() {
 
     if (!targetLevel) {
       alert("الرجاء اختيار المستوى المستهدف");
+      return;
+    }
+
+    // Validate hierarchy selection
+    if (!hierarchySelection) {
+      alert("يرجى اختيار التسلسل الإداري للتصويت");
       return;
     }
 
@@ -172,37 +238,81 @@ export default function VotingPage() {
       return;
     }
 
-    // Create new voting
-    const newVoting: Voting = {
-      id: `voting-${Date.now()}`,
+    // Create voting data object
+    const votingData = {
       title: newVotingTitle,
       description: newVotingDescription,
-      options: newVotingOptions.map((opt, index) => ({
-        id: `opt-${Date.now()}-${index}`,
-        text: opt,
-        votes: 0,
-      })),
+      options: newVotingOptions.map(opt => ({ text: opt })),
       startDate,
       endDate,
       targetLevel: targetLevel as UserLevel,
-      createdBy: {
-        id: user.id,
-        name: user.name,
-        level: user.level,
-      },
-      status: new Date(startDate) > new Date() ? "upcoming" : "active",
+      voteType,
+      // Add hierarchy targeting information
+      targetRegionId: hierarchySelection.regionId,
+      targetLocalityId: hierarchySelection.localityId,
+      targetAdminUnitId: hierarchySelection.adminUnitId,
+      targetDistrictId: hierarchySelection.districtId
     };
 
-    setVotings([newVoting, ...votings]);
-    
-    // Reset form
-    setNewVotingTitle("");
-    setNewVotingDescription("");
-    setNewVotingOptions(["", ""]);
-    setTargetLevel("");
-    setStartDate("");
-    setEndDate("");
-    setIsFormOpen(false);
+    try {
+      setLoading(true);
+      
+      // Submit to API
+      console.log('Creating new voting:', votingData);
+      
+      // Use cookie token as fallback if context token is not available
+      const cookieToken = !token ? document.cookie
+        .split('; ')
+        .find(row => row.startsWith('token='))
+        ?.split('=')[1] : null;
+        
+      const effectiveToken = token || cookieToken;
+      
+      if (!effectiveToken) {
+        throw new Error('No authentication token available');
+      }
+      
+      const createdVoting = await apiClient.voting.createVotingItem(effectiveToken, votingData);
+      console.log('Voting created successfully:', createdVoting);
+      
+      // Add to local state
+      const newVoting: Voting = {
+        ...createdVoting,
+        options: createdVoting.options || newVotingOptions.map((opt, index) => ({
+          id: `opt-${Date.now()}-${index}`,
+          text: opt,
+          votes: 0,
+        })),
+        createdBy: createdVoting.createdBy || {
+          id: user.id,
+          name: user.name,
+          level: user.level,
+        },
+        status: createdVoting.status || (new Date(startDate) > new Date() ? "upcoming" : "active"),
+      };
+      
+      setVotings([newVoting, ...votings]);
+      
+      // Reset form
+      setNewVotingTitle("");
+      setNewVotingDescription("");
+      setNewVotingOptions(["", ""]);
+      setTargetLevel("");
+      setVoteType("opinion");
+      setStartDate("");
+      setEndDate("");
+      setHierarchySelection(null);
+      setIsFormOpen(false);
+      
+      // Show success message
+      alert("تم إنشاء التصويت بنجاح");
+      
+    } catch (error) {
+      console.error('Error creating voting:', error);
+      alert("حدث خطأ أثناء إنشاء التصويت. يرجى المحاولة مرة أخرى.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Get available target levels based on user level
@@ -337,6 +447,36 @@ export default function VotingPage() {
               </button>
             </div>
             
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
+                نوع التصويت
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="voteType"
+                    value="opinion"
+                    checked={voteType === "opinion"}
+                    onChange={() => setVoteType("opinion")}
+                    className="text-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+                  />
+                  <span className="text-sm">تصويت رأي</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="voteType"
+                    value="electoral"
+                    checked={voteType === "electoral"}
+                    onChange={() => setVoteType("electoral")}
+                    className="text-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+                  />
+                  <span className="text-sm">تصويت انتخابي</span>
+                </label>
+              </div>
+            </div>
+
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
@@ -383,6 +523,23 @@ export default function VotingPage() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Hierarchy Selection */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
+                التسلسل الإداري للتصويت <span className="text-red-500">*</span>
+              </label>
+              <div className="border border-[var(--neutral-300)] rounded-md p-3">
+                <HierarchySelector
+                  onSelectionChange={setHierarchySelection}
+                  initialSelection={hierarchySelection}
+                  className="w-full"
+                />
+              </div>
+              <p className="mt-1 text-xs text-[var(--neutral-500)]">
+                اختر المستوى الإداري المستهدف لهذا التصويت
+              </p>
             </div>
             
             <div className="flex justify-end gap-2">
@@ -435,16 +592,19 @@ export default function VotingPage() {
               <p className="mb-3 text-sm text-[var(--neutral-600)]">{voting.description}</p>
               
               <div className="mb-3 text-xs text-[var(--neutral-500)]">
-                <div className="mb-1">المستوى المستهدف: {voting.targetLevel}</div>
-                <div className="mb-1">تاريخ البدء: {voting.startDate}</div>
-                <div className="mb-1">تاريخ الانتهاء: {voting.endDate}</div>
-                <div>أنشأه: {voting.createdBy.name}</div>
+                <div key={`${voting.id}-type`} className="mb-1">
+                  نوع التصويت: {voting.voteType === "electoral" ? "تصويت انتخابي" : "تصويت رأي"}
+                </div>
+                <div key={`${voting.id}-level`} className="mb-1">المستوى المستهدف: {voting.targetLevel}</div>
+                <div key={`${voting.id}-start`} className="mb-1">تاريخ البدء: {voting.startDate}</div>
+                <div key={`${voting.id}-end`} className="mb-1">تاريخ الانتهاء: {voting.endDate}</div>
+                <div key={`${voting.id}-creator`}>أنشأه: {voting.createdBy.name}</div>
               </div>
               
               <div className="space-y-3 mb-3">
                 <h4 className="text-sm font-medium text-[var(--neutral-800)]">خيارات التصويت:</h4>
-                {voting.options.map((option) => (
-                  <div key={option.id} className="text-sm">
+                {voting.options.map((option, optIndex) => (
+                  <div key={option.id || `${voting.id}-option-${optIndex}`} className="text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-[var(--neutral-700)]">{option.text}</span>
                       <span className="font-medium text-[var(--primary-600)]">{option.votes}</span>
@@ -472,7 +632,7 @@ export default function VotingPage() {
               </div>
               
               <div className="flex justify-end">
-                <button className="app-button-secondary">
+                <button key={`${voting.id}-details-btn`} className="app-button-secondary">
                   عرض التفاصيل
                 </button>
               </div>

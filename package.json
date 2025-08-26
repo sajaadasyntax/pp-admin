@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
+    "@types/js-cookie": "^3.0.6",
+    "axios": "^1.6.5",
     "i18next": "^25.0.2",
+    "js-cookie": "^3.0.5",
     "next": "14.2.15",
     "next-auth": "^4.24.11",
     "next-i18next": "^15.4.2",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,38 +11,56 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, logout, isLoading } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const [notificationCount, setNotificationCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Check if user is authenticated
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/");
+      console.log("No user found, redirecting to login...");
+      window.location.href = "/login";
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading]);
+
+  // Handle navigation with loading state
+  const handleNavigation = (path: string) => {
+    setIsNavigating(true);
+    window.location.href = path;
+  };
+
+  // Reset navigation state when pathname changes
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
 
   // Mock notification count
   useEffect(() => {
     setNotificationCount(3);
   }, []);
 
+  // Show loading state only during initial load
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-xl">جاري التحميل...</div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+          <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
+        </div>
       </div>
     );
   }
 
+  // Don't render anything if no user
   if (!user) {
     return null;
   }
 
   const handleLogout = () => {
+    setIsNavigating(true);
     logout();
-    router.push("/");
+    window.location.href = "/login";
   };
 
   const navItems = [
@@ -53,6 +71,7 @@ export default function DashboardLayout({
     { name: "التصويت", path: "/dashboard/voting" },
     { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
     { name: "النشرة", path: "/dashboard/bulletin" },
+    { name: "إدارة التسلسل الإداري", path: "/dashboard/hierarchy" },
     { name: "الأرشيف", path: "/dashboard/archive" },
     { name: "الإشعارات", path: "/dashboard/notifications" },
     // Show deletion requests to all users for now
@@ -101,7 +120,7 @@ export default function DashboardLayout({
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`fixed inset-y-0 right-0 z-50 w-64 transform bg-[var(--card)] shadow-lg transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:shadow-none ${
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
@@ -126,7 +145,11 @@ export default function DashboardLayout({
                     ? "bg-[var(--primary-50)] text-[var(--primary-600)]"
                     : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
                 }`}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsMobileMenuOpen(false);
+                  handleNavigation(item.path);
+                }}
               >
                 <span>{item.name}</span>
                 {item.name === "الإشعارات" && notificationCount > 0 && (
@@ -154,7 +177,18 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+      <main className="flex-1 overflow-auto p-4 md:p-6">
+        {isNavigating ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+              <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
     </div>
   );
 } 

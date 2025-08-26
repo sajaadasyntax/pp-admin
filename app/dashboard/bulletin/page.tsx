@@ -1,14 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Bulletin, BulletinAttachment } from "../../types";
+import { apiClient, PUBLIC_URL } from "../../context/apiContext";
+import Image from "next/image";
+import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
 
 export default function BulletinPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+  
+  // File input reference
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -20,81 +27,33 @@ export default function BulletinPage() {
   const [bulletinContent, setBulletinContent] = useState("");
   const [publishDate, setPublishDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
   
-  // Get mock data
+  // Fetch bulletins from the API
+  const fetchBulletins = async () => {
+    if (!token) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await apiClient.bulletins.getAllBulletins(token);
+      setBulletins(response);
+    } catch (err) {
+      console.error("Error fetching bulletins:", err);
+      setError("حدث خطأ أثناء جلب النشرات");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load bulletins on component mount
   useEffect(() => {
-    // Mock bulletins
-    const mockBulletins: Bulletin[] = [
-      {
-        id: "1",
-        title: "إعلان عن افتتاح مركز خدمة المواطنين الجديد",
-        content: "نعلن عن افتتاح مركز خدمة المواطنين الجديد في منطقة الخرطوم. يقدم المركز خدمات استخراج الوثائق وخدمات أخرى متنوعة.",
-        publishDate: "2023-10-15",
-        expiryDate: "2023-11-15",
-        status: "published",
-        level: "المحلية",
-        createdBy: {
-          id: "admin1",
-          name: "مدير النظام",
-          level: "مدير النظام",
-        },
-        createdAt: "2023-10-10",
-        attachments: [
-          {
-            id: "a1",
-            fileName: "صورة المركز.jpg",
-            fileType: "image/jpeg",
-            fileSize: 250000,
-            fileUrl: "/mock/center.jpg",
-            uploadedAt: "2023-10-10",
-          }
-        ]
-      },
-      {
-        id: "2",
-        title: "إعلان هام بخصوص مواعيد الخدمات الإلكترونية",
-        content: "نود الإعلان عن تغيير مواعيد تقديم الخدمات الإلكترونية لتكون من الساعة 8 صباحاً حتى 8 مساءً يومياً.",
-        publishDate: "2023-10-20",
-        expiryDate: "2023-12-20",
-        status: "published",
-        level: "الولاية",
-        createdBy: {
-          id: "admin1",
-          name: "مدير النظام",
-          level: "مدير النظام",
-        },
-        createdAt: "2023-10-18",
-      },
-      {
-        id: "3",
-        title: "مسودة قرار جديد للمجلس المحلي",
-        content: "تم إعداد مسودة القرار الجديد للمجلس المحلي بخصوص تنظيم الأسواق المحلية. المسودة متاحة للاطلاع عليها في المرفقات.",
-        publishDate: "2023-11-01",
-        status: "draft",
-        level: "الحي",
-        createdBy: {
-          id: "admin1",
-          name: "مدير النظام",
-          level: "مدير النظام",
-        },
-        createdAt: "2023-10-25",
-        attachments: [
-          {
-            id: "a2",
-            fileName: "مسودة القرار.pdf",
-            fileType: "application/pdf",
-            fileSize: 500000,
-            fileUrl: "/mock/draft.pdf",
-            uploadedAt: "2023-10-25",
-          }
-        ]
-      },
-    ];
-
-    setBulletins(mockBulletins);
-    setLoading(false);
-  }, []);
+    fetchBulletins();
+  }, [token]);
 
   // Reset form
   const resetForm = () => {
@@ -102,7 +61,10 @@ export default function BulletinPage() {
     setBulletinContent("");
     setPublishDate("");
     setExpiryDate("");
+    setImageFile(null);
+    setImagePreview(null);
     setAttachments([]);
+    setHierarchySelection(null);
     setSelectedBulletin(null);
   };
 
@@ -118,13 +80,67 @@ export default function BulletinPage() {
     setSelectedBulletin(bulletin);
     setBulletinTitle(bulletin.title);
     setBulletinContent(bulletin.content);
-    setPublishDate(bulletin.publishDate);
+    setPublishDate(bulletin.publishDate || new Date(bulletin.date).toISOString().split('T')[0]);
     setExpiryDate(bulletin.expiryDate || "");
+    
+    // Set image preview if bulletin has an image
+    if (bulletin.image) {
+      setImagePreview(`${PUBLIC_URL}${bulletin.image}`);
+    } else {
+      setImagePreview(null);
+    }
+    
+    // Set hierarchy selection if bulletin has targeting information
+    if (bulletin.targetRegionId) {
+      // Determine the correct level based on available targeting info
+      let level: 'region' | 'locality' | 'adminUnit' | 'district' = 'region';
+      
+      if (bulletin.targetDistrictId) {
+        level = 'district';
+      } else if (bulletin.targetAdminUnitId) {
+        level = 'adminUnit';
+      } else if (bulletin.targetLocalityId) {
+        level = 'locality';
+      }
+      
+      // Set the hierarchy selection
+      setHierarchySelection({
+        level,
+        regionId: bulletin.targetRegionId,
+        localityId: bulletin.targetLocalityId,
+        adminUnitId: bulletin.targetAdminUnitId,
+        districtId: bulletin.targetDistrictId
+      });
+    }
+    
     setFormMode("edit");
     setIsFormOpen(true);
   };
 
-  // Handle file input change
+  // Handle image input change
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  // Remove current image
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Handle file input change for attachments
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
@@ -134,111 +150,146 @@ export default function BulletinPage() {
 
   // Remove attachment from form
   const removeAttachment = (index: number) => {
-    const updatedAttachments = [...attachments];
-    updatedAttachments.splice(index, 1);
-    setAttachments(updatedAttachments);
+    setAttachments(attachments.filter((_, i) => i !== index));
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!user) return;
-
-    // Form validation
-    if (!bulletinTitle || !bulletinContent || !publishDate) {
-      alert("الرجاء إكمال جميع الحقول المطلوبة");
+    
+    if (!token) return;
+    
+    // Validation
+    if (!bulletinTitle.trim() || !bulletinContent.trim() || !publishDate) {
+      alert("يرجى ملء جميع الحقول المطلوبة");
       return;
     }
-
-    // Mock file uploads and create attachment objects
-    const uploadedAttachments: BulletinAttachment[] = attachments.map((file, index) => ({
-      id: `attachment-${Date.now()}-${index}`,
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
-      fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
-      uploadedAt: new Date().toISOString(),
-    }));
-
-    if (formMode === "create") {
-      // Create new bulletin
-      const newBulletin: Bulletin = {
-        id: `bulletin-${Date.now()}`,
+    
+    // Validate hierarchy selection
+    if (!hierarchySelection || !hierarchySelection.regionId) {
+      alert("يرجى اختيار الولاية (المنطقة) للنشرة");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Log hierarchy selection for debugging
+      console.log("Hierarchy selection:", hierarchySelection);
+      
+      // Get the first region from the server if no hierarchy selection is available
+      let targetRegionId = hierarchySelection?.regionId || null;
+      
+      // Make sure we always have a valid region ID
+      if (!targetRegionId) {
+        // Get the first available region ID from the server
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/regions`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const regions = await response.json();
+            if (regions && regions.length > 0) {
+              targetRegionId = regions[0].id;
+              console.log("Using default region ID:", targetRegionId);
+            }
+          }
+        } catch (err) {
+          console.error("Error getting default region:", err);
+        }
+        
+        // If we still don't have a region ID, inform the user and exit
+        if (!targetRegionId) {
+          alert("خطأ: لم يتم اختيار الولاية. يرجى اختيار ولاية للنشرة.");
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Prepare form data - ALWAYS include targetRegionId as a string
+      const bulletinData = {
         title: bulletinTitle,
         content: bulletinContent,
-        publishDate,
-        expiryDate: expiryDate || undefined,
-        status: "draft",
-        attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
-        level: user.level,
-        createdBy: {
-          id: user.id,
-          name: user.name,
-          level: user.level,
-        },
-        createdAt: new Date().toISOString().split("T")[0],
+        date: publishDate,
+        published: true,
+        
+        // Add targetRegionId directly here - VERY IMPORTANT
+        targetRegionId: targetRegionId,
+        
+        // Only include lower levels if they exist
+        ...(hierarchySelection?.localityId ? { targetLocalityId: hierarchySelection.localityId } : {}),
+        ...(hierarchySelection?.adminUnitId ? { targetAdminUnitId: hierarchySelection.adminUnitId } : {}),
+        ...(hierarchySelection?.districtId ? { targetDistrictId: hierarchySelection.districtId } : {})
       };
-
-      setBulletins([newBulletin, ...bulletins]);
-      alert("تم إنشاء النشرة بنجاح");
-    } else if (formMode === "edit" && selectedBulletin) {
-      // Update existing bulletin
-      const updatedBulletins = bulletins.map((bulletin) =>
-        bulletin.id === selectedBulletin.id
-          ? {
-              ...bulletin,
-              title: bulletinTitle,
-              content: bulletinContent,
-              publishDate,
-              expiryDate: expiryDate || undefined,
-              updatedAt: new Date().toISOString().split("T")[0],
-              // Merge existing attachments with new ones
-              attachments: [
-                ...(bulletin.attachments || []),
-                ...uploadedAttachments,
-              ],
-            }
-          : bulletin
-      );
-
-      setBulletins(updatedBulletins);
-      alert("تم تحديث النشرة بنجاح");
+      
+      // Log the bulletin data before sending
+      console.log("Bulletin data to submit:", bulletinData);
+      
+      if (formMode === "create") {
+        // Create new bulletin
+        const newBulletin = await apiClient.bulletins.createBulletin(token, bulletinData, imageFile || undefined);
+        setBulletins(prev => [newBulletin, ...prev]);
+        alert("تم إنشاء النشرة بنجاح");
+      } else if (formMode === "edit" && selectedBulletin) {
+        // Update existing bulletin
+        const updatedBulletin = await apiClient.bulletins.updateBulletin(
+          token, 
+          selectedBulletin.id, 
+          bulletinData,
+          imageFile || undefined
+        );
+        
+        // Update bulletins list
+        setBulletins(prev => 
+          prev.map(bulletin => 
+            bulletin.id === selectedBulletin.id ? updatedBulletin : bulletin
+          )
+        );
+        
+        alert("تم تحديث النشرة بنجاح");
+      }
+    } catch (err) {
+      console.error("Error submitting bulletin:", err);
+      alert("حدث خطأ أثناء حفظ النشرة");
+    } finally {
+      setLoading(false);
+      setIsFormOpen(false);
+      resetForm();
     }
-
-    // Close form
-    setIsFormOpen(false);
-    resetForm();
-  };
-
-  // Change bulletin status
-  const changeBulletinStatus = (bulletinId: string, newStatus: "draft" | "published" | "archived") => {
-    const updatedBulletins = bulletins.map((bulletin) =>
-      bulletin.id === bulletinId
-        ? { ...bulletin, status: newStatus }
-        : bulletin
-    );
-    setBulletins(updatedBulletins);
   };
 
   // Delete bulletin
-  const deleteBulletin = (bulletinId: string) => {
+  const deleteBulletin = async (bulletinId: string) => {
+    if (!token) return;
+    
     if (window.confirm("هل أنت متأكد من حذف هذه النشرة؟")) {
-      const updatedBulletins = bulletins.filter(
-        (bulletin) => bulletin.id !== bulletinId
-      );
-      setBulletins(updatedBulletins);
+      setLoading(true);
+      
+      try {
+        await apiClient.bulletins.deleteBulletin(token, bulletinId);
+        setBulletins(prev => prev.filter(bulletin => bulletin.id !== bulletinId));
+        alert("تم حذف النشرة بنجاح");
+      } catch (err) {
+        console.error("Error deleting bulletin:", err);
+        alert("حدث خطأ أثناء حذف النشرة");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  // Filter bulletins
-  const filteredBulletins =
-    filter === "all"
-      ? bulletins
-      : bulletins.filter((bulletin) => bulletin.status === filter);
+  // Filter bulletins - for now, just show all bulletins
+  const filteredBulletins = bulletins;
 
-  if (loading) {
+  if (loading && bulletins.length === 0) {
     return <div className="text-center p-4">جاري التحميل...</div>;
+  }
+  
+  if (error) {
+    return <div className="text-center p-4 text-[var(--error-600)]">{error}</div>;
   }
 
   return (
@@ -253,14 +304,12 @@ export default function BulletinPage() {
             dir="rtl"
           >
             <option value="all">جميع النشرات</option>
-            <option value="published">المنشورة</option>
-            <option value="draft">المسودات</option>
-            <option value="archived">المؤرشفة</option>
           </select>
           
           <button
             onClick={openCreateForm}
             className="app-button-primary"
+            disabled={loading}
           >
             إنشاء نشرة جديدة
           </button>
@@ -285,8 +334,7 @@ export default function BulletinPage() {
                     {bulletin.title}
                   </h2>
                   <p className="text-sm text-[var(--neutral-500)]">
-                    تاريخ النشر: {bulletin.publishDate}
-                    {bulletin.expiryDate && ` | تاريخ الانتهاء: ${bulletin.expiryDate}`}
+                    تاريخ النشر: {new Date(bulletin.date).toLocaleDateString('ar-SA')}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -297,27 +345,10 @@ export default function BulletinPage() {
                     تعديل
                   </button>
                   
-                  {bulletin.status === "draft" && (
-                    <button
-                      onClick={() => changeBulletinStatus(bulletin.id, "published")}
-                      className="rounded-md bg-[var(--success-100)] px-3 py-1 text-sm text-[var(--success-700)] hover:bg-[var(--success-200)]"
-                    >
-                      نشر
-                    </button>
-                  )}
-                  
-                  {bulletin.status === "published" && (
-                    <button
-                      onClick={() => changeBulletinStatus(bulletin.id, "archived")}
-                      className="rounded-md bg-[var(--warning-100)] px-3 py-1 text-sm text-[var(--warning-700)] hover:bg-[var(--warning-200)]"
-                    >
-                      أرشفة
-                    </button>
-                  )}
-                  
                   <button
                     onClick={() => deleteBulletin(bulletin.id)}
                     className="rounded-md bg-[var(--error-100)] px-3 py-1 text-sm text-[var(--error-700)] hover:bg-[var(--error-200)]"
+                    disabled={loading}
                   >
                     حذف
                   </button>
@@ -328,43 +359,15 @@ export default function BulletinPage() {
                 {bulletin.content}
               </div>
 
-              {bulletin.attachments && bulletin.attachments.length > 0 && (
+              {bulletin.image && (
                 <div className="mb-4">
-                  <h3 className="mb-2 text-sm font-semibold text-[var(--neutral-700)]">
-                    المرفقات:
-                  </h3>
-                  <div className="space-y-2">
-                    {bulletin.attachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="flex items-center rounded-lg bg-[var(--neutral-50)] p-2"
-                      >
-                        <span className="flex-1 text-sm text-[var(--neutral-700)]">
-                          {attachment.fileName}
-                        </span>
-                        <button
-                          className="ml-2 text-sm text-[var(--primary-600)] hover:text-[var(--primary-700)]"
-                          onClick={() => window.open(attachment.fileUrl, "_blank")}
-                        >
-                          تنزيل
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  <img 
+                    src={`${PUBLIC_URL}${bulletin.image}`}
+                    alt={bulletin.title} 
+                    className="max-h-40 rounded-lg object-cover"
+                  />
                 </div>
               )}
-
-              <div className="flex items-center justify-between text-sm text-[var(--neutral-500)]">
-                <div>
-                  المستوى: {bulletin.level} | الحالة: {
-                    bulletin.status === "published" ? "منشورة" :
-                    bulletin.status === "draft" ? "مسودة" : "مؤرشفة"
-                  }
-                </div>
-                <div>
-                  بواسطة: {bulletin.createdBy.name}
-                </div>
-              </div>
             </div>
           ))
         )}
@@ -399,7 +402,7 @@ export default function BulletinPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
                   عنوان النشرة
@@ -426,84 +429,97 @@ export default function BulletinPage() {
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
-                    تاريخ النشر
-                  </label>
-                  <input
-                    type="date"
-                    value={publishDate}
-                    onChange={(e) => setPublishDate(e.target.value)}
-                    className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 text-[var(--neutral-900)] focus:border-[var(--primary-500)] focus:outline-none"
-                    required
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
+                  تاريخ النشر
+                </label>
+                <input
+                  type="date"
+                  value={publishDate}
+                  onChange={(e) => setPublishDate(e.target.value)}
+                  className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 text-[var(--neutral-900)] focus:border-[var(--primary-500)] focus:outline-none"
+                  required
+                />
+              </div>
+
+              {/* Hierarchy Selection */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
+                  التسلسل الإداري للنشرة <span className="text-red-500">*</span>
+                </label>
+                <div className="border border-[var(--neutral-300)] rounded-md p-3">
+                  <HierarchySelector
+                    onSelectionChange={(selection) => {
+                      // Only update if we have valid data and a regionId
+                      if (selection && selection.regionId) {
+                        console.log("Updating hierarchy selection:", selection);
+                        setHierarchySelection(selection);
+                      } else {
+                        console.log("Ignoring invalid hierarchy selection:", selection);
+                      }
+                    }}
+                    initialSelection={hierarchySelection}
+                    className="w-full"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
-                    تاريخ الانتهاء (اختياري)
-                  </label>
-                  <input
-                    type="date"
-                    value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
-                    className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 text-[var(--neutral-900)] focus:border-[var(--primary-500)] focus:outline-none"
-                  />
-                </div>
+                <p className="mt-1 text-xs text-[var(--neutral-500)]">
+                  اختر المستوى الإداري المستهدف لهذه النشرة
+                </p>
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
-                  المرفقات
+                  صورة النشرة
                 </label>
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 text-[var(--neutral-900)] focus:border-[var(--primary-500)] focus:outline-none"
-                  multiple
-                />
+                <div className="space-y-2">
+                  {imagePreview && (
+                    <div className="relative w-full max-w-xs">
+                      <img 
+                        src={imagePreview} 
+                        alt="Image Preview" 
+                        className="h-40 w-auto rounded-md border object-cover" 
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute top-1 right-1 rounded-full bg-white p-1 text-[var(--neutral-700)] shadow hover:bg-[var(--neutral-100)]"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    className="block w-full text-sm text-[var(--neutral-700)]
+                      file:mr-4 file:rounded-md file:border-0 file:bg-[var(--primary-50)] file:px-4
+                      file:py-2 file:text-sm file:font-semibold file:text-[var(--primary-700)]
+                      hover:file:bg-[var(--primary-100)]"
+                  />
+                  <p className="text-xs text-[var(--neutral-500)]">الحد الأقصى للحجم: 5 ميغابايت. صيغ مدعومة: JPG، PNG، GIF</p>
+                </div>
               </div>
 
-              {attachments.length > 0 && (
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-[var(--neutral-700)]">
-                    المرفقات الجديدة:
-                  </h3>
-                  <div className="space-y-2">
-                    {attachments.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-lg bg-[var(--neutral-50)] p-2"
-                      >
-                        <span className="text-sm text-[var(--neutral-700)]">
-                          {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(index)}
-                          className="text-[var(--error-500)] hover:text-[var(--error-700)]"
-                        >
-                          حذف
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="rounded-md border border-[var(--neutral-300)] bg-white px-4 py-2 text-[var(--neutral-700)] hover:bg-[var(--neutral-50)]"
+                  className="rounded-md bg-[var(--neutral-100)] px-4 py-2 text-[var(--neutral-700)] hover:bg-[var(--neutral-200)]"
+                  disabled={loading}
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   className="rounded-md bg-[var(--primary-600)] px-4 py-2 text-white hover:bg-[var(--primary-700)]"
+                  disabled={loading}
                 >
-                  {formMode === "create" ? "إنشاء النشرة" : "حفظ التغييرات"}
+                  {loading ? "جاري الحفظ..." : formMode === "create" ? "إنشاء" : "تحديث"}
                 </button>
               </div>
             </form>
@@ -512,4 +528,4 @@ export default function BulletinPage() {
       )}
     </div>
   );
-} 
+}
