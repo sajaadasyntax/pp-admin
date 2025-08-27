@@ -61,7 +61,7 @@ export default function ReportsPage() {
           
           // Filter reports based on user level
           const filteredReports = reportsData.filter(
-            (report) => {
+            (report: Report) => {
               // Each admin can only see reports from their level or below
               const levels: Record<string, number> = {
                 "الحي": 1,

@@ -6,9 +6,16 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const isAuthPage = request.nextUrl.pathname === '/login';
 
-  // For API routes, let them handle their own authentication
+  // For API routes, handle CORS and authentication
   if (request.nextUrl.pathname.startsWith('/api')) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return response;
   }
 
   if (!token && !isAuthPage) {

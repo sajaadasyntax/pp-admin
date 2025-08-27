@@ -8,12 +8,13 @@ export interface Report {
   date: string;
   level: UserLevel;
   createdBy: string;
-  status: "pending" | "resolved" | "rejected";
+  status: string; // Changed from enum to string to be more flexible
   submittedAt?: string;
   updatedAt?: string;
   type?: string;
   attachmentName?: string | null;
   createdById?: string;
+  [key: string]: any;
 }
 
 // Membership type
@@ -23,7 +24,7 @@ export interface Membership {
   userName: string;
   level: UserLevel;
   hierarchyText?: string; // New field for hierarchy display
-  status: "active" | "disabled";
+  status: string; // Changed from enum to string
   email: string;
   phone: string;
   joinDate: string;
@@ -37,6 +38,7 @@ export interface Membership {
     districtId?: string;
     districtName?: string;
   };
+  [key: string]: any;
 }
 
 // Subscription type
@@ -49,8 +51,9 @@ export interface Subscription {
   amount: number;
   startDate: string;
   endDate: string;
-  status: "active" | "disabled";
+  status: string; // Changed from enum to string
   disabledBy?: string;
+  [key: string]: any;
 }
 
 // Voting type
@@ -62,13 +65,14 @@ export interface Voting {
   startDate: string;
   endDate: string;
   targetLevel: UserLevel;
-  voteType?: "electoral" | "opinion";
+  voteType?: string;
   createdBy: {
     id: string;
     name: string;
     level: UserLevel;
   };
-  status: "active" | "closed" | "upcoming";
+  status: string; // Changed from enum to string
+  [key: string]: any;
 }
 
 export interface VotingOption {
@@ -192,4 +196,55 @@ export interface ArchiveItem {
     name: string;
     level: UserLevel;
   };
+}
+
+// API Types
+export interface UserData {
+  id?: string;
+  name?: string;
+  email?: string;
+  level?: UserLevel;
+  [key: string]: any;
+}
+
+export interface ContentData {
+  id: string;
+  title: string;
+  content: string;
+  [key: string]: unknown;
+}
+
+export interface BulletinData {
+  id?: string;
+  title: string;
+  content: string;
+  targetRegionId: string;
+  [key: string]: unknown;
+}
+
+export interface PlanData {
+  id?: string;
+  name: string;
+  description: string;
+  price: number;
+  duration: number;
+  [key: string]: unknown;
+}
+
+export interface SurveyData {
+  id?: string;
+  title: string;
+  description: string;
+  questions: unknown[];
+  [key: string]: unknown;
+}
+
+export interface VotingData {
+  id?: string;
+  title: string;
+  description: string;
+  options: unknown[];
+  startDate: string;
+  endDate: string;
+  [key: string]: unknown;
 }

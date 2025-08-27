@@ -356,7 +356,7 @@ export default function ArchivePage() {
 
                 <div className="flex justify-between">
                   <a
-                    href={item.fileUrl.startsWith('http') ? item.fileUrl : `${PUBLIC_URL}${item.fileUrl}`}
+                    href={item.fileUrl?.startsWith('http') ? item.fileUrl : `${PUBLIC_URL}${item.fileUrl || ''}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     download

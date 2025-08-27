@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // Types for hierarchy data
 interface Region {
@@ -72,7 +72,7 @@ export default function HierarchySelector({
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
   // API helper function
-  const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token') ||
                   sessionStorage.getItem('token') ||
                   localStorage.getItem('authToken') ||
@@ -97,10 +97,10 @@ export default function HierarchySelector({
       throw new Error(`API call failed: ${response.status} ${response.statusText}`);
     }
     return response.json();
-  };
+  }, [API_BASE_URL]);
 
   // Load hierarchy data
-  const loadHierarchyData = async () => {
+  const loadHierarchyData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -109,7 +109,7 @@ export default function HierarchySelector({
       try {
         const treeData = await apiCall('/hierarchy-management/tree');
         setRegions(treeData);
-      } catch (treeError) {
+      } catch (_error) {
         // Fallback: get regions only
         const regionsData = await apiCall('/hierarchy-management/regions');
         setRegions(regionsData);
@@ -120,12 +120,12 @@ export default function HierarchySelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiCall]);
 
   // Load data on component mount
   useEffect(() => {
     loadHierarchyData();
-  }, []);
+  }, [loadHierarchyData]);
 
   // Set initial selection if provided
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function HierarchySelector({
                 e.stopPropagation();
                 
                 // Update the selected level
-                setSelectedLevel(level.value as any);
+                setSelectedLevel(level.value as HierarchySelection['level']);
                 
                 // Don't notify selection change here - we'll do that after region selection
                 // This prevents the error when just changing the level

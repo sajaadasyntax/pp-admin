@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, error, loading, user } = useAuth();
+  const { login, error, isLoading, user } = useAuth();
 
   useEffect(() => {
     console.log("User state changed:", user);
@@ -82,14 +82,14 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             className={`w-full py-3 px-4 rounded-md text-white font-medium transition-colors
-              ${loading 
+              ${isLoading 
                 ? 'bg-blue-400 cursor-not-allowed' 
                 : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
               }`}
           >
-            {loading ? (
+            {isLoading ? (
               <span className="flex items-center justify-center">
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

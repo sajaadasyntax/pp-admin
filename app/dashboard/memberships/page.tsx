@@ -176,7 +176,7 @@ export default function MembershipsPage() {
           console.log('Memberships fetched:', membershipsData);
           
           // Filter memberships based on user level
-          const filteredMemberships = membershipsData.filter((membership) => {
+          const filteredMemberships = membershipsData.filter((membership: Membership) => {
             // Each admin can only see memberships from their level or below
             const levels: Record<string, number> = {
               "الحي": 1,

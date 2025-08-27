@@ -380,13 +380,13 @@ export default function ReportDetailsPage() {
             <div>
               <p className="text-sm text-[var(--neutral-500)]">تاريخ التقديم</p>
               <p className="text-[var(--neutral-700)]">
-                {new Date(report.submittedAt).toLocaleDateString('ar-SA')}
+                {report.submittedAt ? new Date(report.submittedAt).toLocaleDateString('ar-SA') : 'غير متاح'}
               </p>
             </div>
             <div>
               <p className="text-sm text-[var(--neutral-500)]">آخر تحديث</p>
               <p className="text-[var(--neutral-700)]">
-                {new Date(report.updatedAt).toLocaleDateString('ar-SA')}
+                {report.updatedAt ? new Date(report.updatedAt).toLocaleDateString('ar-SA') : 'غير متاح'}
               </p>
             </div>
           </div>

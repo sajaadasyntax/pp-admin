@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
         console.log('API: Backend error details:', errorData);
-      } catch (e) {
+      } catch (_error) {
         console.log('API: Could not parse error response');
       }
       
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
         console.log('API: Backend error details:', errorData);
-      } catch (e) {
+      } catch (_error) {
         console.log('API: Could not parse error response');
       }
       

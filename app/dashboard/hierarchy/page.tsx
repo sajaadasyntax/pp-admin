@@ -196,7 +196,7 @@ export default function HierarchyPage() {
       setActionLoading(true);
       
       let endpoint = '';
-      let data: any = {
+      const data: any = {
         name: newItem.name,
         code: newItem.code || undefined,
         description: newItem.description || undefined

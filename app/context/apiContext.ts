@@ -1,7 +1,8 @@
 // API client service for connecting to the backend
+import { UserData, ContentData, BulletinData, PlanData, SurveyData, VotingData } from '../types';
 
-export const API_BASE_URL = 'http://localhost:5000/api';
-export const PUBLIC_URL = 'http://localhost:5000';
+export const API_BASE_URL = 'https://mnuofvlpjd.disposablesubdomain.xyz/api';
+export const PUBLIC_URL = 'https://mnuofvlpjd.disposablesubdomain.xyz';
 
 // Helper function for handling API responses
 const handleResponse = async (response: Response) => {
@@ -106,7 +107,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createUser: async (token: string, userData: any) => {
+    createUser: async (token: string, userData: UserData) => {
       const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
         headers: {
@@ -117,7 +118,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updateUser: async (token: string, userId: string, userData: any) => {
+    updateUser: async (token: string, userId: string, userData: UserData) => {
       const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -141,7 +142,7 @@ export const apiClient = {
   
   // Content endpoints
   content: {
-    getAllContent: async (token: string, params: any = {}) => {
+    getAllContent: async (token: string, params: Record<string, string> = {}) => {
       const queryParams = new URLSearchParams(params).toString();
       const url = queryParams ? 
         `${API_BASE_URL}/content?${queryParams}` : 
@@ -162,7 +163,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createContent: async (token: string, contentData: any) => {
+    createContent: async (token: string, contentData: ContentData) => {
       const response = await fetch(`${API_BASE_URL}/content`, {
         method: 'POST',
         headers: {
@@ -173,7 +174,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updateContent: async (token: string, contentId: string, contentData: any) => {
+    updateContent: async (token: string, contentId: string, contentData: ContentData) => {
       const response = await fetch(`${API_BASE_URL}/content/${contentId}`, {
         method: 'PUT',
         headers: {
@@ -214,7 +215,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createBulletin: async (token: string, bulletinData: any, imageFile?: File) => {
+    createBulletin: async (token: string, bulletinData: BulletinData, imageFile?: File) => {
       // CRITICAL: Make sure targetRegionId is always set
       if (!bulletinData.targetRegionId) {
         console.error("MISSING targetRegionId in bulletinData:", bulletinData);
@@ -294,7 +295,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updateBulletin: async (token: string, bulletinId: string, bulletinData: any, imageFile?: File) => {
+    updateBulletin: async (token: string, bulletinId: string, bulletinData: BulletinData, imageFile?: File) => {
       // CRITICAL: Make sure targetRegionId is always set
       if (!bulletinData.targetRegionId) {
         console.error("MISSING targetRegionId in bulletinData (update):", bulletinData);
@@ -438,7 +439,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createSurvey: async (token: string, surveyData: any) => {
+    createSurvey: async (token: string, surveyData: SurveyData) => {
       const response = await fetch(`${API_BASE_URL}/content/surveys`, {
         method: 'POST',
         headers: {
@@ -449,7 +450,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updateSurvey: async (token: string, surveyId: string, surveyData: any) => {
+    updateSurvey: async (token: string, surveyId: string, surveyData: SurveyData) => {
       const response = await fetch(`${API_BASE_URL}/content/surveys/${surveyId}`, {
         method: 'PUT',
         headers: {
@@ -497,7 +498,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createVotingItem: async (token: string, votingData: any) => {
+    createVotingItem: async (token: string, votingData: VotingData) => {
       const response = await fetch(`${API_BASE_URL}/content/voting`, {
         method: 'POST',
         headers: {
@@ -508,7 +509,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updateVotingItem: async (token: string, votingId: string, votingData: any) => {
+    updateVotingItem: async (token: string, votingId: string, votingData: VotingData) => {
       const response = await fetch(`${API_BASE_URL}/content/voting/${votingId}`, {
         method: 'PUT',
         headers: {
@@ -596,7 +597,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createMember: async (token: string, memberData: any) => {
+    createMember: async (token: string, memberData: UserData) => {
       const response = await fetch(`${API_BASE_URL}/users/members`, {
         method: 'POST',
         headers: {
@@ -658,7 +659,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    createPlan: async (token: string, planData: any) => {
+    createPlan: async (token: string, planData: PlanData) => {
       const response = await fetch(`${API_BASE_URL}/content/subscription-plans`, {
         method: 'POST',
         headers: {
@@ -669,7 +670,7 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    updatePlan: async (token: string, planId: string, planData: any) => {
+    updatePlan: async (token: string, planId: string, planData: PlanData) => {
       const response = await fetch(`${API_BASE_URL}/content/subscription-plans/${planId}`, {
         method: 'PUT',
         headers: {
