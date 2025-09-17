@@ -21,10 +21,10 @@ export function getUserHierarchySelection(user: User | null): HierarchySelection
 
   // Determine the hierarchy level based on admin level
   let level: HierarchySelection['level'];
-  let regionId = user.regionId || '';
-  let localityId = user.localityId || '';
-  let adminUnitId = user.adminUnitId || '';
-  let districtId = user.districtId || '';
+  const regionId = user.regionId || '';
+  const localityId = user.localityId || '';
+  const adminUnitId = user.adminUnitId || '';
+  const districtId = user.districtId || '';
 
   // Set hierarchy level based on admin level
   switch (user.adminLevel) {

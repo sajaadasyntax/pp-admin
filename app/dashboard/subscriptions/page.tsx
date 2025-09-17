@@ -23,7 +23,7 @@ export default function SubscriptionsPage() {
       setSuccess(null);
 
       // Fetch subscription plans based on active tab
-      let queryParams: any = {};
+      const queryParams: any = {};
       
       if (activeTab === 'pending') {
         // Show unapproved plans for root admins

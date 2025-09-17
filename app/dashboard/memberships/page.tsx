@@ -22,6 +22,7 @@ export default function MembershipsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Form states
   const [formData, setFormData] = useState({
