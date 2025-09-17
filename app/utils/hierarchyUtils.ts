@@ -1,4 +1,34 @@
-import { User } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
+
+// Define User interface matching the one from AuthContext
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  level: string;
+  role: string;
+  adminLevel: 'GENERAL_SECRETARIAT' | 'REGION' | 'LOCALITY' | 'ADMIN_UNIT' | 'DISTRICT' | 'USER' | 'ADMIN';
+  regionId?: string;
+  localityId?: string;
+  adminUnitId?: string;
+  districtId?: string;
+  region?: {
+    id: string;
+    name: string;
+  };
+  locality?: {
+    id: string;
+    name: string;
+  };
+  adminUnit?: {
+    id: string;
+    name: string;
+  };
+  district?: {
+    id: string;
+    name: string;
+  };
+};
 
 export interface HierarchySelection {
   level: 'region' | 'locality' | 'adminUnit' | 'district';
