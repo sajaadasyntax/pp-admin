@@ -1,8 +1,9 @@
 // API client service for connecting to the backend
 import { UserData, ContentData, BulletinData, PlanData, SurveyData, VotingData } from '../types';
+import subscriptionService from '../services/subscriptionService';
 
-export const API_BASE_URL = 'https://mnuofvlpjd.disposablesubdomain.xyz/api';
-export const PUBLIC_URL = 'https://mnuofvlpjd.disposablesubdomain.xyz';
+export const API_BASE_URL = 'http://localhost:5000/api';
+export const PUBLIC_URL = 'http://localhost:5000';
 
 // Helper function for handling API responses
 const handleResponse = async (response: Response) => {
@@ -48,13 +49,13 @@ const handleResponse = async (response: Response) => {
 export const apiClient = {
   // Auth endpoints
   auth: {
-    login: async (email: string, password: string) => {
+    login: async (mobileNumber: string, password: string) => {
       console.log('Making login request to:', `${API_BASE_URL}/auth/login`);
       try {
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ mobileNumber, password }),
           credentials: 'include'
         });
         console.log('Login response status:', response.status);
@@ -692,34 +693,6 @@ export const apiClient = {
     },
   },
   
-  // Subscriptions management
-  subscriptions: {
-    getAllSubscriptions: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscriptions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      return handleResponse(response);
-    },
-    getUserSubscriptions: async (token: string, userId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscriptions/user/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      return handleResponse(response);
-    },
-    updateSubscriptionStatus: async (token: string, subscriptionId: string, status: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscriptions/${subscriptionId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      return handleResponse(response);
-    },
-  },
+  // Subscription management using the new subscription service
+  subscriptions: subscriptionService,
 }; 

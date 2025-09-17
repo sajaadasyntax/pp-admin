@@ -110,79 +110,8 @@ export default function MemberDetailsPage() {
           console.log('Member details fetched:', memberData);
           setMember(memberData);
         } catch (apiError) {
-          console.error('Error with API call:', apiError);
-          
-          // For demo purposes, use mock data if API fails
-          console.log('Falling back to mock data due to API error');
-          
-          // Mock member data
-          const mockMember: MemberDetails = {
-            id: params.id as string,
-            email: "member@example.com",
-            role: "USER",
-            createdAt: "2023-01-01T00:00:00Z",
-            updatedAt: "2023-01-01T00:00:00Z",
-            
-            personalInfo: {
-              fullName: "أحمد محمد علي",
-              firstName: "أحمد",
-              lastName: "محمد علي",
-              nickname: "أبو علي",
-              birthDate: "1980-01-01",
-              birthPlace: "الخرطوم",
-              birthLocality: "الخرطوم",
-              birthState: "الخرطوم",
-              gender: "male",
-              religion: "الإسلام",
-              maritalStatus: "married",
-              nationalId: "1234567890123",
-              nationalIdIssueDate: "2010-01-01",
-              passportNumber: "A12345678"
-            },
-            
-            residenceInfo: {
-              neighborhood: "المنشية",
-              locality: "الخرطوم",
-              state: "الخرطوم",
-              phone: "0183123456",
-              mobile: "0912345678",
-              email: "member@example.com"
-            },
-            
-            educationAndWork: {
-              highestEducation: "بكالوريوس",
-              educationInstitution: "جامعة الخرطوم",
-              graduationYear: "2000",
-              currentJob: "مهندس",
-              jobSector: "public",
-              employmentStatus: "active",
-              workAddress: "وزارة البنى التحتية، الخرطوم"
-            },
-            
-            additionalInfo: {
-              disability: "",
-              residenceAbroad: "",
-              electoralDistrict: "الخرطوم الدائرة الثالثة"
-            },
-            
-            politicalAndSocialActivity: {
-              previousCouncilMembership: "عضو مجلس محلي سابق (2010-2015)",
-              previousPartyMembership: "",
-              civilSocietyParticipation: "عضو في جمعية المهندسين السودانيين",
-              clubMembership: "عضو نادي الهلال الرياضي",
-              professionalMembership: "عضو نقابة المهندسين"
-            },
-            
-            statistics: {
-              reportsCount: 5,
-              surveysCount: 3,
-              votesCount: 10
-            },
-            
-            status: "active"
-          };
-          
-          setMember(mockMember);
+          console.error('Error fetching member details:', apiError);
+          setError('حدث خطأ أثناء تحميل بيانات العضو');
         }
       } catch (error) {
         console.error('Error fetching member details:', error);

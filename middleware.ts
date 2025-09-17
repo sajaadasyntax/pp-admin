@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   // Get the token from localStorage
   const token = request.cookies.get('token')?.value;
-  const isAuthPage = request.nextUrl.pathname === '/login';
+  const isAuthPage = request.nextUrl.pathname === '/';
 
   // For API routes, handle CORS and authentication
   if (request.nextUrl.pathname.startsWith('/api')) {
@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
 
   if (!token && !isAuthPage) {
     // Redirect to login if trying to access protected route without token
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   if (token && isAuthPage) {

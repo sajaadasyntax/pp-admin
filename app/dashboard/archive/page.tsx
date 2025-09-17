@@ -4,8 +4,17 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { ArchiveItem } from "../../types";
 import { apiClient, PUBLIC_URL } from "../../context/apiContext";
+import RootAdminOnly from "../../components/RootAdminOnly";
 
 export default function ArchivePage() {
+  return (
+    <RootAdminOnly>
+      <ArchiveContent />
+    </RootAdminOnly>
+  );
+}
+
+function ArchiveContent() {
   const { user, token } = useAuth();
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>([]);
   const [loading, setLoading] = useState(true);

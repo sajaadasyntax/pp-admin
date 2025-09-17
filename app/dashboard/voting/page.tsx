@@ -6,6 +6,7 @@ import { Voting } from "../../types";
 import { UserLevel } from "../../context/AuthContext";
 import { apiClient } from "../../context/apiContext";
 import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
+import { getUserHierarchySelection, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
 
 export default function VotingPage() {
   const { user, token } = useAuth();
@@ -23,6 +24,16 @@ export default function VotingPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
+
+  // Auto-populate hierarchy based on user's level
+  useEffect(() => {
+    if (user) {
+      const userHierarchy = getUserHierarchySelection(user);
+      if (userHierarchy) {
+        setHierarchySelection(userHierarchy);
+      }
+    }
+  }, [user]);
 
   // Get real votings data from API
   useEffect(() => {
@@ -93,69 +104,7 @@ export default function VotingPage() {
         }
       } catch (error) {
         console.error('Error fetching voting items:', error);
-        // If API fails, use mock data for development
-        const mockVotings: Voting[] = [
-          {
-            id: "1",
-            title: "التصويت على المشروع التنموي الجديد",
-            description: "اختيار أحد المشاريع التنموية المقترحة للحي",
-            options: [
-              { id: "opt1", text: "مشروع المركز الثقافي", votes: 120 },
-              { id: "opt2", text: "مشروع التشجير", votes: 85 },
-              { id: "opt3", text: "مشروع الملاعب الرياضية", votes: 150 },
-            ],
-            startDate: "2023-10-10",
-            endDate: "2023-10-20",
-            targetLevel: "الحي",
-            createdBy: {
-              id: "u1",
-              name: "أحمد محمد",
-              level: "الوحدة الإدارية",
-            },
-            status: "active",
-          },
-          {
-            id: "2",
-            title: "التصويت على ميزانية التعليم",
-            description: "تحديد نسبة توزيع ميزانية التعليم على المناطق المختلفة",
-            options: [
-              { id: "opt1", text: "80% مناطق نائية، 20% مدن", votes: 45 },
-              { id: "opt2", text: "70% مناطق نائية، 30% مدن", votes: 65 },
-              { id: "opt3", text: "60% مناطق نائية، 40% مدن", votes: 30 },
-            ],
-            startDate: "2023-09-20",
-            endDate: "2023-10-05",
-            targetLevel: "الوحدة الإدارية",
-            createdBy: {
-              id: "u2",
-              name: "محمد علي",
-              level: "المحلية",
-            },
-            status: "closed",
-          },
-          {
-            id: "3",
-            title: "الاستطلاع حول مشروع إعادة التدوير",
-            description: "استطلاع آراء السكان حول مشروع إعادة التدوير المزمع تنفيذه",
-            options: [
-              { id: "opt1", text: "موافق بشدة", votes: 230 },
-              { id: "opt2", text: "موافق", votes: 180 },
-              { id: "opt3", text: "محايد", votes: 90 },
-              { id: "opt4", text: "غير موافق", votes: 45 },
-              { id: "opt5", text: "غير موافق بشدة", votes: 30 },
-            ],
-            startDate: "2023-10-25",
-            endDate: "2023-11-05",
-            targetLevel: "المحلية",
-            createdBy: {
-              id: "u3",
-              name: "عبدالله خالد",
-              level: "الولاية",
-            },
-            status: "upcoming",
-          },
-        ];
-        setVotings(mockVotings);
+        setVotings([]);
       } finally {
         setLoading(false);
       }
@@ -213,7 +162,7 @@ export default function VotingPage() {
     }
 
     // Validate hierarchy selection
-    if (!hierarchySelection) {
+    if (!hierarchySelection || !hierarchySelection.regionId) {
       alert("يرجى اختيار التسلسل الإداري للتصويت");
       return;
     }
@@ -527,18 +476,36 @@ export default function VotingPage() {
 
             {/* Hierarchy Selection */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
-                التسلسل الإداري للتصويت <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-[var(--neutral-700)]">
+                  التسلسل الإداري للتصويت <span className="text-red-500">*</span>
+                </label>
+                <div className="text-sm text-[var(--neutral-600)]">
+                  <span className="font-medium">النطاق الحالي:</span> {getUserHierarchyDisplayText(user)}
+                </div>
+              </div>
+              
+              {user?.adminLevel !== 'ADMIN' && (
+                <div className="rounded-md bg-blue-50 border border-blue-200 p-3 mb-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>ملاحظة:</strong> سيتم إنشاء التصويت تلقائياً للنطاق الإداري الخاص بك: <strong>{getUserHierarchyDisplayText(user)}</strong>
+                  </p>
+                </div>
+              )}
+              
               <div className="border border-[var(--neutral-300)] rounded-md p-3">
                 <HierarchySelector
                   onSelectionChange={setHierarchySelection}
                   initialSelection={hierarchySelection}
                   className="w-full"
+                  disabled={user?.adminLevel !== 'ADMIN'}
                 />
               </div>
               <p className="mt-1 text-xs text-[var(--neutral-500)]">
-                اختر المستوى الإداري المستهدف لهذا التصويت
+                {user?.adminLevel === 'ADMIN' 
+                  ? 'اختر المستوى الإداري المستهدف لهذا التصويت'
+                  : 'التصويت سيكون متاحاً تلقائياً في نطاقك الإداري'
+                }
               </p>
             </div>
             

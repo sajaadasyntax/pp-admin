@@ -175,108 +175,12 @@ export default function MembershipsPage() {
           const membershipsData = await apiClient.memberships.getAllMemberships(effectiveToken, statusFilter);
           console.log('Memberships fetched:', membershipsData);
           
-          // Filter memberships based on user level
-          const filteredMemberships = membershipsData.filter((membership: Membership) => {
-            // Each admin can only see memberships from their level or below
-            const levels: Record<string, number> = {
-              "الحي": 1,
-              "الوحدة الإدارية": 2,
-              "المحلية": 3,
-              "الولاية": 4,
-              "الإتحادية": 5,
-              "مدير النظام": 6,
-              "ADMIN": 6,
-              "USER": 1
-            };
-            
-            const userLevelValue = user?.level ? levels[user.level] : 0;
-            const membershipLevelValue = levels[membership.level] || 1; // Default to lowest level if not specified
-            
-            return membershipLevelValue <= userLevelValue;
-          });
-
-          setMemberships(filteredMemberships);
+          // Backend already handles hierarchical access control, so use data directly
+          setMemberships(membershipsData);
         } catch (apiError) {
           console.error('Error with API call:', apiError);
-          console.log('Falling back to mock data due to API error');
-          
-          // If API fails, use mock data for demonstration
-          const mockMemberships: Membership[] = [
-            {
-              id: "1",
-              userId: "u1",
-              userName: "أحمد محمد",
-              level: "الحي",
-              status: "active",
-              email: "ahmed@example.com",
-              phone: "+966123456789",
-              joinDate: "2023-10-15",
-            },
-            {
-              id: "2",
-              userId: "u2",
-              userName: "سارة علي",
-              level: "الوحدة الإدارية",
-              status: "active",
-              email: "sara@example.com",
-              phone: "+966123456790",
-              joinDate: "2023-10-10",
-            },
-            {
-              id: "3",
-              userId: "u3",
-              userName: "محمد خالد",
-              level: "المحلية",
-              status: "disabled",
-              email: "mohammed@example.com",
-              phone: "+966123456791",
-              joinDate: "2023-09-30",
-            },
-            {
-              id: "4",
-              userId: "u4",
-              userName: "فاطمة أحمد",
-              level: "الولاية",
-              status: "active",
-              email: "fatima@example.com",
-              phone: "+966123456792",
-              joinDate: "2023-09-25",
-            },
-            {
-              id: "5",
-              userId: "u5",
-              userName: "عمر خالد",
-              level: "الإتحادية",
-              status: "disabled",
-              email: "omar@example.com",
-              phone: "+966123456793",
-              joinDate: "2023-09-20",
-            },
-          ];
-
-          // Filter mock memberships based on status
-          const statusFilteredMemberships = filter === "all"
-            ? mockMemberships
-            : mockMemberships.filter((membership) => membership.status === filter);
-          
-          // Filter based on user level
-          const levelFilteredMemberships = statusFilteredMemberships.filter((membership) => {
-            const levels: Record<string, number> = {
-              "الحي": 1,
-              "الوحدة الإدارية": 2,
-              "المحلية": 3,
-              "الولاية": 4,
-              "الإتحادية": 5,
-              "مدير النظام": 6,
-            };
-            
-            const userLevelValue = user?.level ? levels[user.level] : 0;
-            const membershipLevelValue = levels[membership.level];
-            
-            return membershipLevelValue <= userLevelValue;
-          });
-
-          setMemberships(levelFilteredMemberships);
+          setError('فشل في تحميل بيانات العضويات. يرجى المحاولة مرة أخرى.');
+          setMemberships([]);
         }
       } catch (error) {
         console.error('Error in memberships fetching process:', error);

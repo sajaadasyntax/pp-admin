@@ -81,83 +81,8 @@ export default function ReportsPage() {
 
           setReports(filteredReports);
         } catch (apiError) {
-          console.error('Error with standard API call:', apiError);
-          console.log('Falling back to mock data due to API error');
-          
-          // If API fails, use mock data for demonstration
-          const mockReports: Report[] = [
-            {
-              id: "1",
-              title: "تقرير عن الأنشطة المجتمعية",
-              content: "محتوى التقرير عن الأنشطة المجتمعية في الحي",
-              date: "2023-10-15",
-              level: "الحي",
-              createdBy: "أحمد محمد",
-              status: "pending",
-            },
-            {
-              id: "2",
-              title: "تقرير الصيانة الشهري",
-              content: "محتوى تقرير الصيانة الشهري للوحدة الإدارية",
-              date: "2023-10-10",
-              level: "الوحدة الإدارية",
-              createdBy: "محمد أحمد",
-              status: "resolved",
-            },
-            {
-              id: "3",
-              title: "تقرير الميزانية السنوي",
-              content: "محتوى تقرير الميزانية السنوي للمحلية",
-              date: "2023-09-30",
-              level: "المحلية",
-              createdBy: "عبدالله خالد",
-              status: "pending",
-            },
-            {
-              id: "4",
-              title: "تقرير المشاريع التنموية",
-              content: "محتوى تقرير المشاريع التنموية في الولاية",
-              date: "2023-09-25",
-              level: "الولاية",
-              createdBy: "سارة علي",
-              status: "rejected",
-            },
-            {
-              id: "5",
-              title: "تقرير الخطة الاستراتيجية",
-              content: "محتوى تقرير الخطة الاستراتيجية للإتحادية",
-              date: "2023-09-20",
-              level: "الإتحادية",
-              createdBy: "خالد عمر",
-              status: "pending",
-            },
-          ];
-
-          // Filter mock reports based on status
-          const filteredMockReports = filter === "all"
-            ? mockReports
-            : mockReports.filter((report) => report.status === filter);
-          
-          // Filter based on user level
-          const levelFilteredReports = filteredMockReports.filter(
-            (report) => {
-              const levels: Record<string, number> = {
-                "الحي": 1,
-                "الوحدة الإدارية": 2,
-                "المحلية": 3,
-                "الولاية": 4,
-                "الإتحادية": 5,
-                "مدير النظام": 6
-              };
-              
-              const userLevelValue = user?.level ? levels[user.level] : 0;
-              const reportLevelValue = levels[report.level];
-              
-              return reportLevelValue <= userLevelValue;
-            }
-          );
-
-          setReports(levelFilteredReports);
+          console.error('Error fetching reports:', apiError);
+          setReports([]);
         }
       } catch (error) {
         console.error('Error in reports fetching process:', error);

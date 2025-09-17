@@ -68,14 +68,26 @@ export default function DashboardLayout({
     { name: "التقارير", path: "/dashboard/reports" },
     { name: "العضويات", path: "/dashboard/memberships" },
     { name: "الاشتراكات", path: "/dashboard/subscriptions" },
-    { name: "التصويت", path: "/dashboard/voting" },
-    { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
+    { name: "التصويت والاستطلاعات", path: "/dashboard/voting-surveys" },
     { name: "النشرة", path: "/dashboard/bulletin" },
-    { name: "إدارة التسلسل الإداري", path: "/dashboard/hierarchy" },
-    { name: "الأرشيف", path: "/dashboard/archive" },
+    { 
+      name: "التسلسل الإداري", 
+      path: "/dashboard/hierarchy",
+      children: [
+        { name: "نظرة عامة", path: "/dashboard/hierarchy" },
+        { name: "الولايات", path: "/dashboard/hierarchy/regions" },
+        { name: "المحليات", path: "/dashboard/hierarchy/localities" },
+        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" },
+      ]
+    },
+    // Only show these pages to root admin
+    ...(user?.level === "مدير النظام" ? [
+      { name: "الأرشيف", path: "/dashboard/archive" },
+      { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
+      { name: "طلبات الحذف", path: "/dashboard/deletion-requests" }
+    ] : []),
     { name: "الإشعارات", path: "/dashboard/notifications" },
-    // Show deletion requests to all users for now
-    { name: "طلبات الحذف", path: "/dashboard/deletion-requests" },
   ];
 
   const toggleMobileMenu = () => {
@@ -137,27 +149,72 @@ export default function DashboardLayout({
           {/* Navigation */}
           <nav className="flex-grow space-y-1 p-2">
             {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`flex items-center rounded-xl px-3 py-3 text-sm ${
-                  pathname === item.path
-                    ? "bg-[var(--primary-50)] text-[var(--primary-600)]"
-                    : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsMobileMenuOpen(false);
-                  handleNavigation(item.path);
-                }}
-              >
-                <span>{item.name}</span>
-                {item.name === "الإشعارات" && notificationCount > 0 && (
-                  <span className="mr-2 rounded-full bg-[var(--error-500)] px-2 py-1 text-xs text-white">
-                    {notificationCount}
-                  </span>
+              <div key={item.path} className="mb-1">
+                <Link
+                  href={item.path}
+                  className={`flex items-center justify-between rounded-xl px-3 py-3 text-sm ${
+                    pathname === item.path || (item.children && pathname.startsWith(item.path))
+                      ? "bg-[var(--primary-50)] text-[var(--primary-600)]"
+                      : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!item.children) {
+                      setIsMobileMenuOpen(false);
+                      handleNavigation(item.path);
+                    } else {
+                      // Toggle submenu
+                      const submenu = document.getElementById(`submenu-${item.name}`);
+                      if (submenu) {
+                        submenu.classList.toggle('hidden');
+                      }
+                    }
+                  }}
+                >
+                  <span>{item.name}</span>
+                  <div className="flex items-center">
+                    {item.name === "الإشعارات" && notificationCount > 0 && (
+                      <span className="mr-2 rounded-full bg-[var(--error-500)] px-2 py-1 text-xs text-white">
+                        {notificationCount}
+                      </span>
+                    )}
+                    {item.children && (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </Link>
+                
+                {/* Submenu */}
+                {item.children && (
+                  <div 
+                    id={`submenu-${item.name}`} 
+                    className={`mr-4 mt-1 space-y-1 border-r border-[var(--neutral-200)] pr-2 ${
+                      pathname.startsWith(item.path) ? '' : 'hidden'
+                    }`}
+                  >
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.path}
+                        href={child.path}
+                        className={`block rounded-xl px-3 py-2 text-sm ${
+                          pathname === child.path
+                            ? "bg-[var(--primary-50)] text-[var(--primary-600)]"
+                            : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setIsMobileMenuOpen(false);
+                          handleNavigation(child.path);
+                        }}
+                      >
+                        {child.name}
+                      </Link>
+                    ))}
+                  </div>
                 )}
-              </Link>
+              </div>
             ))}
           </nav>
 

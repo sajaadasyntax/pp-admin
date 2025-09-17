@@ -3,126 +3,78 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { DeletionRequest } from "../../types";
+import { apiClient } from "../../context/apiContext";
+import RootAdminOnly from "../../components/RootAdminOnly";
 
 export default function DeletionRequestsPage() {
-  const { user } = useAuth();
+  return (
+    <RootAdminOnly>
+      <DeletionRequestsContent />
+    </RootAdminOnly>
+  );
+}
+
+function DeletionRequestsContent() {
+  const { user, token } = useAuth();
   const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
 
-  // Get mock deletion requests data
+  // Fetch deletion requests data from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const mockDeletionRequests: DeletionRequest[] = [
-      {
-        id: "1",
-        requestType: "user",
-        itemId: "u101",
-        itemName: "محمد عبدالله",
-        requestReason: "المستخدم غير نشط لمدة 6 أشهر",
-        requestDate: "2023-12-15",
-        requestedBy: {
-          id: "admin1",
-          name: "أحمد سليمان",
-          level: "الإتحادية",
-        },
-        status: "pending",
-      },
-      {
-        id: "2",
-        requestType: "report",
-        itemId: "r203",
-        itemName: "تقرير مخالفات الحي الشرقي",
-        requestReason: "تم معالجة المخالفات وإغلاق الموضوع",
-        requestDate: "2023-12-10",
-        requestedBy: {
-          id: "admin2",
-          name: "سارة محمد",
-          level: "الولاية",
-        },
-        status: "pending",
-      },
-      {
-        id: "3",
-        requestType: "voting",
-        itemId: "v305",
-        itemName: "التصويت على مشروع تطوير الحديقة العامة",
-        requestReason: "انتهت فترة التصويت والمشروع تم إلغاؤه",
-        requestDate: "2023-12-05",
-        requestedBy: {
-          id: "admin3",
-          name: "خالد أحمد",
-          level: "المحلية",
-        },
-        status: "approved",
-        actionDate: "2023-12-07",
-      },
-      {
-        id: "4",
-        requestType: "user",
-        itemId: "u156",
-        itemName: "فاطمة علي",
-        requestReason: "حساب مكرر للمستخدم",
-        requestDate: "2023-12-01",
-        requestedBy: {
-          id: "admin4",
-          name: "عمر حسن",
-          level: "الوحدة الإدارية",
-        },
-        status: "rejected",
-        actionDate: "2023-12-03",
-      },
-      {
-        id: "5",
-        requestType: "report",
-        itemId: "r410",
-        itemName: "تقرير صيانة المباني الحكومية",
-        requestReason: "التقرير قديم ولم يعد ذو صلة",
-        requestDate: "2023-11-25",
-        requestedBy: {
-          id: "admin5",
-          name: "ليلى يوسف",
-          level: "الإتحادية",
-        },
-        status: "pending",
-      },
-    ];
+    const fetchDeletionRequests = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-    setDeletionRequests(mockDeletionRequests);
-    setLoading(false);
-  }, []);
+      try {
+        setLoading(true);
+        
+        // TODO: Replace with actual API call when backend endpoint is implemented
+        // const requestsData = await apiClient.deletionRequests.getAllRequests(user.token);
+        // setDeletionRequests(requestsData);
+        
+        // For now, set empty array until API is implemented
+        setDeletionRequests([]);
+        
+      } catch (error) {
+        console.error('Error fetching deletion requests:', error);
+        setDeletionRequests([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDeletionRequests();
+  }, [token]);
 
   // Handle request approval
-  const handleApproveRequest = (id: string) => {
-    setDeletionRequests((prevRequests) =>
-      prevRequests.map((request) => {
-        if (request.id === id) {
-          return {
-            ...request,
-            status: "approved",
-            actionDate: new Date().toISOString().split("T")[0],
-            actionBy: user?.name
-          };
-        }
-        return request;
-      })
-    );
+  const handleApproveRequest = async (id: string) => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.deletionRequests.approveRequest(token, id);
+      
+      // For now, show message that feature is not yet implemented
+      alert("الموافقة على طلبات الحذف غير متاحة حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error approving deletion request:', error);
+      alert("حدث خطأ أثناء الموافقة على الطلب. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Handle request rejection
-  const handleRejectRequest = (id: string) => {
-    setDeletionRequests((prevRequests) =>
-      prevRequests.map((request) => {
-        if (request.id === id) {
-          return {
-            ...request,
-            status: "rejected",
-            actionDate: new Date().toISOString().split("T")[0],
-          };
-        }
-        return request;
-      })
-    );
+  const handleRejectRequest = async (id: string) => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.deletionRequests.rejectRequest(token, id);
+      
+      // For now, show message that feature is not yet implemented
+      alert("رفض طلبات الحذف غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error rejecting deletion request:', error);
+      alert("حدث خطأ أثناء رفض الطلب. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Filter deletion requests

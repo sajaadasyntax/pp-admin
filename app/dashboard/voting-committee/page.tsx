@@ -3,9 +3,19 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { VotingCommittee, VotingCommitteeMember, Voting } from "../../types";
+import { apiClient } from "../../context/apiContext";
+import RootAdminOnly from "../../components/RootAdminOnly";
 
 export default function VotingCommitteePage() {
-  const { user } = useAuth();
+  return (
+    <RootAdminOnly>
+      <VotingCommitteeContent />
+    </RootAdminOnly>
+  );
+}
+
+function VotingCommitteeContent() {
+  const { user, token } = useAuth();
   const [committees, setCommittees] = useState<VotingCommittee[]>([]);
   const [votings, setVotings] = useState<Voting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,158 +43,44 @@ export default function VotingCommitteePage() {
     }
   ]);
   
-  // Get mock data
+  // Fetch data from API
   useEffect(() => {
-    // Mock committees
-    const mockCommittees: VotingCommittee[] = [
-      {
-        id: "1",
-        name: "لجنة انتخابات المجلس المحلي",
-        description: "لجنة للإشراف على انتخابات المجلس المحلي",
-        votingId: "1",
-        votingTitle: "التصويت على المشروع التنموي الجديد",
-        startDate: "2023-10-05",
-        endDate: "2023-10-25",
-        status: "active",
-        members: [
-          {
-            id: "m1",
-            name: "خالد عبدالله",
-            email: "khaled@example.com",
-            phone: "05xxxxxxxx",
-            role: "chairman",
-            status: "active",
-            lastLogin: "2023-10-10",
-          },
-          {
-            id: "m2",
-            name: "فاطمة أحمد",
-            email: "fatima@example.com",
-            phone: "05xxxxxxxx",
-            role: "secretary",
-            status: "active",
-            lastLogin: "2023-10-11",
-          },
-          {
-            id: "m3",
-            name: "محمد سعيد",
-            email: "mohamed@example.com",
-            phone: "05xxxxxxxx",
-            role: "member",
-            status: "active",
-            lastLogin: "2023-10-09",
-          },
-        ],
-        createdBy: {
-          id: "admin1",
-          name: "مدير النظام",
-          level: "مدير النظام",
-        },
-        createdAt: "2023-10-01",
-      },
-      {
-        id: "2",
-        name: "لجنة استطلاع الرأي",
-        description: "لجنة للإشراف على استطلاع الرأي حول مشروع إعادة التدوير",
-        votingId: "3",
-        votingTitle: "الاستطلاع حول مشروع إعادة التدوير",
-        startDate: "2023-10-20",
-        endDate: "2023-11-10",
-        status: "inactive",
-        members: [
-          {
-            id: "m4",
-            name: "سارة محمد",
-            email: "sara@example.com",
-            phone: "05xxxxxxxx",
-            role: "chairman",
-            status: "active",
-          },
-          {
-            id: "m5",
-            name: "أحمد علي",
-            email: "ahmed@example.com",
-            phone: "05xxxxxxxx",
-            role: "secretary",
-            status: "inactive",
-          },
-        ],
-        createdBy: {
-          id: "admin1",
-          name: "مدير النظام",
-          level: "مدير النظام",
-        },
-        createdAt: "2023-10-15",
-      },
-    ];
+    const fetchData = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-    // Mock votings
-    const mockVotings: Voting[] = [
-      {
-        id: "1",
-        title: "التصويت على المشروع التنموي الجديد",
-        description: "اختيار أحد المشاريع التنموية المقترحة للحي",
-        options: [
-          { id: "opt1", text: "مشروع المركز الثقافي", votes: 120 },
-          { id: "opt2", text: "مشروع التشجير", votes: 85 },
-          { id: "opt3", text: "مشروع الملاعب الرياضية", votes: 150 },
-        ],
-        startDate: "2023-10-10",
-        endDate: "2023-10-20",
-        targetLevel: "الحي",
-        createdBy: {
-          id: "u1",
-          name: "أحمد محمد",
-          level: "الوحدة الإدارية",
-        },
-        status: "active",
-      },
-      {
-        id: "2",
-        title: "التصويت على ميزانية التعليم",
-        description: "تحديد نسبة توزيع ميزانية التعليم على المناطق المختلفة",
-        options: [
-          { id: "opt1", text: "80% مناطق نائية، 20% مدن", votes: 45 },
-          { id: "opt2", text: "70% مناطق نائية، 30% مدن", votes: 65 },
-          { id: "opt3", text: "60% مناطق نائية، 40% مدن", votes: 30 },
-        ],
-        startDate: "2023-09-20",
-        endDate: "2023-10-05",
-        targetLevel: "الوحدة الإدارية",
-        createdBy: {
-          id: "u2",
-          name: "محمد علي",
-          level: "المحلية",
-        },
-        status: "closed",
-      },
-      {
-        id: "3",
-        title: "الاستطلاع حول مشروع إعادة التدوير",
-        description: "استطلاع آراء السكان حول مشروع إعادة التدوير المزمع تنفيذه",
-        options: [
-          { id: "opt1", text: "موافق بشدة", votes: 230 },
-          { id: "opt2", text: "موافق", votes: 180 },
-          { id: "opt3", text: "محايد", votes: 90 },
-          { id: "opt4", text: "غير موافق", votes: 45 },
-          { id: "opt5", text: "غير موافق بشدة", votes: 30 },
-        ],
-        startDate: "2023-10-25",
-        endDate: "2023-11-05",
-        targetLevel: "المحلية",
-        createdBy: {
-          id: "u3",
-          name: "عبدالله خالد",
-          level: "الولاية",
-        },
-        status: "upcoming",
-      },
-    ];
+      try {
+        setLoading(true);
+        
+        // Fetch voting committees (when API is available)
+        // TODO: Replace with actual API call when backend endpoint is implemented
+        // const committeesData = await apiClient.committees.getAllCommittees(user.token);
+        // setCommittees(committeesData);
+        
+        // For now, set empty array until API is implemented
+        setCommittees([]);
+        
+        // Fetch votings
+        const votingsData = await apiClient.voting.getAllVotingItems(token);
+        if (Array.isArray(votingsData)) {
+          setVotings(votingsData);
+        } else {
+          setVotings([]);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setCommittees([]);
+        setVotings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setCommittees(mockCommittees);
-    setVotings(mockVotings);
-    setLoading(false);
-  }, []);
+    fetchData();
+  }, [token]);
 
   // Add new member to the form
   const addMember = () => {
@@ -294,64 +190,52 @@ export default function VotingCommitteePage() {
       return;
     }
 
-    if (formMode === "create") {
-      // Create new committee
-      const newCommittee: VotingCommittee = {
-        id: `committee-${Date.now()}`,
-        name: committeeName,
-        description: committeeDescription,
-        votingId: selectedVotingId,
-        votingTitle: selectedVoting.title,
-        startDate: committeeStartDate,
-        endDate: committeeEndDate,
-        status: "inactive",
-        members: members.map((member, index) => ({
-          ...member,
-          id: `member-${Date.now()}-${index}`,
-          temporaryPassword: generateTemporaryPassword(),
-        } as VotingCommitteeMember)),
-        createdBy: {
-          id: user.id,
-          name: user.name,
-          level: user.level,
-        },
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-
-      setCommittees([newCommittee, ...committees]);
-      
-      // Here you would send invitation emails to committee members
-      alert("تم إنشاء اللجنة بنجاح وسيتم إرسال دعوات للأعضاء");
-    } else if (formMode === "edit" && selectedCommittee) {
-      // Update existing committee
-      const updatedCommittees = committees.map((committee) =>
-        committee.id === selectedCommittee.id
-          ? {
-              ...committee,
-              name: committeeName,
-              description: committeeDescription,
-              votingId: selectedVotingId,
-              votingTitle: selectedVoting.title,
-              startDate: committeeStartDate,
-              endDate: committeeEndDate,
-              members: members.map((member) => {
-                // For existing members, keep their ID
-                if ("id" in member) {
-                  return member as VotingCommitteeMember;
-                }
-                // For new members, generate an ID and temporary password
-                return {
-                  ...member,
-                  id: `member-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                  temporaryPassword: generateTemporaryPassword(),
-                } as VotingCommitteeMember;
-              }),
-            }
-          : committee
-      );
-
-      setCommittees(updatedCommittees);
-      alert("تم تحديث اللجنة بنجاح");
+    try {
+      if (formMode === "create") {
+        // TODO: Replace with actual API call when backend endpoint is implemented
+        // const newCommittee = await apiClient.committees.createCommittee(user.token, {
+        //   name: committeeName,
+        //   description: committeeDescription,
+        //   votingId: selectedVotingId,
+        //   startDate: committeeStartDate,
+        //   endDate: committeeEndDate,
+        //   members: members.map(member => ({
+        //     ...member,
+        //     temporaryPassword: generateTemporaryPassword(),
+        //   }))
+        // });
+        
+        // For now, show message that feature is not yet implemented
+        alert("إنشاء اللجان غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+        return;
+        
+      } else if (formMode === "edit" && selectedCommittee) {
+        // TODO: Replace with actual API call when backend endpoint is implemented
+        // await apiClient.committees.updateCommittee(user.token, selectedCommittee.id, {
+        //   name: committeeName,
+        //   description: committeeDescription,
+        //   votingId: selectedVotingId,
+        //   startDate: committeeStartDate,
+        //   endDate: committeeEndDate,
+        //   members: members.map(member => {
+        //     if ("id" in member) {
+        //       return member as VotingCommitteeMember;
+        //     }
+        //     return {
+        //       ...member,
+        //       temporaryPassword: generateTemporaryPassword(),
+        //     } as VotingCommitteeMember;
+        //   })
+        // });
+        
+        // For now, show message that feature is not yet implemented
+        alert("تعديل اللجان غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+        return;
+      }
+    } catch (error) {
+      console.error('Error saving committee:', error);
+      alert("حدث خطأ أثناء حفظ اللجنة. يرجى المحاولة مرة أخرى.");
+      return;
     }
 
     // Close form
@@ -370,34 +254,32 @@ export default function VotingCommitteePage() {
   };
 
   // Activate or deactivate a committee
-  const toggleCommitteeStatus = (committeeId: string, newStatus: "active" | "inactive" | "completed") => {
-    const updatedCommittees = committees.map((committee) =>
-      committee.id === committeeId
-        ? { ...committee, status: newStatus }
-        : committee
-    );
-    setCommittees(updatedCommittees);
+  const toggleCommitteeStatus = async (committeeId: string, newStatus: "active" | "inactive" | "completed") => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.committees.updateCommitteeStatus(token, committeeId, newStatus);
+      
+      // For now, show message that feature is not yet implemented
+      alert("تغيير حالة اللجان غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error updating committee status:', error);
+      alert("حدث خطأ أثناء تحديث حالة اللجنة. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Reset member password
-  const resetMemberPassword = (committeeId: string, memberId: string) => {
-    const newPassword = generateTemporaryPassword();
-    
-    const updatedCommittees = committees.map((committee) => {
-      if (committee.id === committeeId) {
-        const updatedMembers = committee.members.map((member) =>
-          member.id === memberId
-            ? { ...member, temporaryPassword: newPassword }
-            : member
-        );
-        return { ...committee, members: updatedMembers };
-      }
-      return committee;
-    });
-    
-    setCommittees(updatedCommittees);
-    alert(`تم إعادة تعيين كلمة المرور بنجاح: ${newPassword}`);
-    // In a real app, you would send this password to the member's email
+  const resetMemberPassword = async (committeeId: string, memberId: string) => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // const newPassword = await apiClient.committees.resetMemberPassword(token, committeeId, memberId);
+      // alert(`تم إعادة تعيين كلمة المرور بنجاح: ${newPassword}`);
+      
+      // For now, show message that feature is not yet implemented
+      alert("إعادة تعيين كلمة مرور الأعضاء غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error resetting member password:', error);
+      alert("حدث خطأ أثناء إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   if (loading) {

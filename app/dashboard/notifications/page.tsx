@@ -3,105 +3,83 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Notification } from "../../types";
+import { apiClient } from "../../context/apiContext";
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
-  // Get mock notifications data
+  // Fetch notifications data from API
   useEffect(() => {
-    // In a real app, this would be an API call filtered by user level
-    const mockNotifications: Notification[] = [
-      {
-        id: "1",
-        title: "تم إنشاء تقرير جديد",
-        message: "تم إنشاء تقرير جديد بواسطة أحمد محمد",
-        date: "2023-10-15T10:30:00",
-        read: false,
-        level: "الحي",
-      },
-      {
-        id: "2",
-        title: "تم قبول عضوية جديدة",
-        message: "تم قبول عضوية سارة علي في مستوى الوحدة الإدارية",
-        date: "2023-10-14T15:45:00",
-        read: true,
-        level: "الوحدة الإدارية",
-      },
-      {
-        id: "3",
-        title: "تم إنشاء تصويت جديد",
-        message: "تم إنشاء تصويت جديد حول ميزانية التعليم",
-        date: "2023-10-13T09:20:00",
-        read: false,
-        level: "المحلية",
-      },
-      {
-        id: "4",
-        title: "تم تعطيل اشتراك",
-        message: "تم تعطيل اشتراك محمد خالد بواسطة عبدالله عمر",
-        date: "2023-10-12T14:10:00",
-        read: false,
-        level: "الولاية",
-      },
-      {
-        id: "5",
-        title: "تحديث النظام",
-        message: "تم تحديث النظام إلى الإصدار الجديد",
-        date: "2023-10-11T11:05:00",
-        read: true,
-        level: "الإتحادية",
-      },
-    ];
+    const fetchNotifications = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-    // Filter notifications based on user level
-    const filteredNotifications = mockNotifications.filter((notification) => {
-      // Each admin can only see notifications from their level or below
-      const levels: Record<string, number> = {
-        "الحي": 1,
-        "الوحدة الإدارية": 2,
-        "المحلية": 3,
-        "الولاية": 4,
-        "الإتحادية": 5,
-        "مدير النظام": 6,
-      };
+      try {
+        setLoading(true);
+        
+        // TODO: Replace with actual API call when backend endpoint is implemented
+        // const notificationsData = await apiClient.notifications.getAllNotifications(token);
+        // setNotifications(notificationsData);
+        
+        // For now, set empty array until API is implemented
+        setNotifications([]);
+        
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      const userLevelValue = user?.level ? levels[user.level] : 0;
-      const notificationLevelValue = levels[notification.level];
-
-      return notificationLevelValue <= userLevelValue;
-    });
-
-    setNotifications(filteredNotifications);
-    setLoading(false);
-  }, [user]);
+    fetchNotifications();
+  }, [token]);
 
   // Mark notification as read
-  const markAsRead = (id: string) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) => {
-        if (notification.id === id) {
-          return { ...notification, read: true };
-        }
-        return notification;
-      })
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.notifications.markAsRead(token, id);
+      
+      // For now, show message that feature is not yet implemented
+      alert("تعليم الإشعارات كمقروءة غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      alert("حدث خطأ أثناء تعليم الإشعار كمقروء. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Mark all notifications as read
-  const markAllAsRead = () => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) => ({ ...notification, read: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.notifications.markAllAsRead(token);
+      
+      // For now, show message that feature is not yet implemented
+      alert("تعليم جميع الإشعارات كمقروءة غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      alert("حدث خطأ أثناء تعليم جميع الإشعارات كمقروءة. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Delete notification
-  const deleteNotification = (id: string) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.filter((notification) => notification.id !== id)
-    );
+  const deleteNotification = async (id: string) => {
+    try {
+      // TODO: Replace with actual API call when backend endpoint is implemented
+      // await apiClient.notifications.deleteNotification(token, id);
+      
+      // For now, show message that feature is not yet implemented
+      alert("حذف الإشعارات غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      alert("حدث خطأ أثناء حذف الإشعار. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Format date

@@ -6,6 +6,7 @@ import { Bulletin, BulletinAttachment } from "../../types";
 import { apiClient, PUBLIC_URL } from "../../context/apiContext";
 import Image from "next/image";
 import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
+import { getUserHierarchySelection, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
 
 export default function BulletinPage() {
   const { user, token } = useAuth();
@@ -31,6 +32,16 @@ export default function BulletinPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
+  
+  // Auto-populate hierarchy based on user's level
+  useEffect(() => {
+    if (user) {
+      const userHierarchy = getUserHierarchySelection(user);
+      if (userHierarchy) {
+        setHierarchySelection(userHierarchy);
+      }
+    }
+  }, [user]);
   
   // Fetch bulletins from the API
   const fetchBulletins = async () => {
@@ -444,9 +455,23 @@ export default function BulletinPage() {
 
               {/* Hierarchy Selection */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[var(--neutral-700)]">
-                  التسلسل الإداري للنشرة <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-[var(--neutral-700)]">
+                    التسلسل الإداري للنشرة <span className="text-red-500">*</span>
+                  </label>
+                  <div className="text-sm text-[var(--neutral-600)]">
+                    <span className="font-medium">النطاق الحالي:</span> {getUserHierarchyDisplayText(user)}
+                  </div>
+                </div>
+                
+                {user?.adminLevel !== 'ADMIN' && (
+                  <div className="rounded-md bg-blue-50 border border-blue-200 p-3 mb-3">
+                    <p className="text-sm text-blue-700">
+                      <strong>ملاحظة:</strong> سيتم إنشاء النشرة تلقائياً للنطاق الإداري الخاص بك: <strong>{getUserHierarchyDisplayText(user)}</strong>
+                    </p>
+                  </div>
+                )}
+                
                 <div className="border border-[var(--neutral-300)] rounded-md p-3">
                   <HierarchySelector
                     onSelectionChange={(selection) => {
@@ -460,10 +485,14 @@ export default function BulletinPage() {
                     }}
                     initialSelection={hierarchySelection}
                     className="w-full"
+                    disabled={user?.adminLevel !== 'ADMIN'}
                   />
                 </div>
                 <p className="mt-1 text-xs text-[var(--neutral-500)]">
-                  اختر المستوى الإداري المستهدف لهذه النشرة
+                  {user?.adminLevel === 'ADMIN' 
+                    ? 'اختر المستوى الإداري المستهدف لهذه النشرة'
+                    : 'النشرة ستُنشر تلقائياً في نطاقك الإداري'
+                  }
                 </p>
               </div>
 

@@ -13,6 +13,27 @@ interface User {
   email: string;
   level: UserLevel;
   role: string;
+  adminLevel: 'GENERAL_SECRETARIAT' | 'REGION' | 'LOCALITY' | 'ADMIN_UNIT' | 'DISTRICT' | 'USER' | 'ADMIN';
+  regionId?: string;
+  localityId?: string;
+  adminUnitId?: string;
+  districtId?: string;
+  region?: {
+    id: string;
+    name: string;
+  };
+  locality?: {
+    id: string;
+    name: string;
+  };
+  adminUnit?: {
+    id: string;
+    name: string;
+  };
+  district?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface AuthContextType {
@@ -61,8 +82,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: userData.id,
             name: userData.name || userData.email,
             email: userData.email,
-            level: mapRoleToLevel(userData.role),
-            role: userData.role
+            level: mapRoleToLevel(userData),
+            role: userData.role,
+            adminLevel: userData.adminLevel,
+            regionId: userData.regionId,
+            localityId: userData.localityId,
+            adminUnitId: userData.adminUnitId,
+            districtId: userData.districtId,
+            region: userData.region,
+            locality: userData.locality,
+            adminUnit: userData.adminUnit,
+            district: userData.district
           });
         }
       } catch (err) {
@@ -81,9 +111,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkToken();
   }, []);
 
-  const mapRoleToLevel = (role: string): UserLevel => {
-    // Map backend roles to frontend user levels
-    switch(role) {
+  const mapRoleToLevel = (userData: any): UserLevel => {
+    // Map backend adminLevel to frontend user levels
+    const { adminLevel, regionName, localityName, adminUnitName, districtName } = userData;
+    
+    switch(adminLevel) {
+      case "GENERAL_SECRETARIAT":
+        return "الإتحادية";
+      case "REGION":
+        return "الولاية";
+      case "LOCALITY":
+        return "المحلية";
+      case "ADMIN_UNIT":
+        return "الوحدة الإدارية";
+      case "DISTRICT":
+        return "الحي";
       case "ADMIN":
         return "مدير النظام";
       default:
@@ -91,14 +133,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (mobileNumber: string, password: string) => {
     console.log("AuthContext: Starting login process");
     setIsLoading(true);
     setError(null);
     
     try {
       console.log("AuthContext: Making API request");
-      const response = await apiClient.auth.login(email, password);
+      const response = await apiClient.auth.login(mobileNumber, password);
       console.log("AuthContext: API response received", response);
       const { token: authToken, refreshToken: newRefreshToken, user: userData } = response;
       
@@ -117,13 +159,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Then update state in the correct order
       setToken(authToken);
       setRefreshToken(newRefreshToken);
-      setUser({
-        id: userData.id,
-        name: userData.name || userData.email,
-        email: userData.email,
-        level: mapRoleToLevel(userData.role),
-        role: userData.role
-      });
+        setUser({
+          id: userData.id,
+          name: userData.name || userData.email,
+          email: userData.email,
+          level: mapRoleToLevel(userData),
+          role: userData.role,
+          adminLevel: userData.adminLevel,
+          regionId: userData.regionId,
+          localityId: userData.localityId,
+          adminUnitId: userData.adminUnitId,
+          districtId: userData.districtId,
+          region: userData.region,
+          locality: userData.locality,
+          adminUnit: userData.adminUnit,
+          district: userData.district
+        });
       
       console.log("AuthContext: Login successful");
       return true; // Indicate successful login

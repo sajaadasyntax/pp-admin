@@ -2,7 +2,7 @@
 const nextConfig = {
   /* config options here */
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://mnuofvlpjd.disposablesubdomain.xyz/api',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   },
   async headers() {
     return [

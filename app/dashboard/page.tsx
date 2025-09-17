@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
+import { apiClient } from "../context/apiContext";
 
 // Define the activity type
 interface RecentActivity {
@@ -39,41 +40,22 @@ export default function Dashboard() {
       setError(null);
       
       try {
-        // For now, we'll use mock data since the API endpoints might not be ready
-        const mockStats = [...stats];
-        mockStats[0].value = 25; // Mock reports count
-        mockStats[1].value = 150; // Mock active memberships
-        mockStats[2].value = 75; // Mock active subscriptions
-        mockStats[3].value = 10; // Mock active votings
+        // Fetch real data from the backend
+        const [membershipsData] = await Promise.all([
+          apiClient.memberships.getAllMemberships(token, 'active')
+        ]);
         
-        setStats(mockStats);
+        // Update stats with real data
+        const updatedStats = [...stats];
+        updatedStats[0].value = 0; // Reports count - TODO: fetch from API
+        updatedStats[1].value = membershipsData?.length || 0; // Active memberships
+        updatedStats[2].value = 0; // Active subscriptions - TODO: fetch from API
+        updatedStats[3].value = 0; // Active votings - TODO: fetch from API
         
-        // Mock recent activities
-        const mockRecentActivities: RecentActivity[] = [
-          {
-            id: 1,
-            type: "report",
-            title: "تم استلام تقرير جديد",
-            user: "مستخدم النظام",
-            time: "حاليًا"
-          },
-          {
-            id: 2,
-            type: "membership",
-            title: "تم تفعيل عضوية جديدة",
-            user: "أحمد محمد",
-            time: "منذ 5 دقائق"
-          },
-          {
-            id: 3,
-            type: "voting",
-            title: "تم إنشاء تصويت جديد",
-            user: "سارة علي",
-            time: "منذ ساعة"
-          }
-        ];
+        setStats(updatedStats);
         
-        setRecentActivities(mockRecentActivities);
+        // TODO: Fetch recent activities from API when endpoint is available
+        setRecentActivities([]);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError("حدث خطأ أثناء تحميل بيانات لوحة المعلومات");

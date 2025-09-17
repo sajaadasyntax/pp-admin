@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // Types for hierarchy data
 interface Region {
@@ -49,12 +50,14 @@ interface HierarchySelectorProps {
   onSelectionChange: (selection: HierarchySelection | null) => void;
   initialSelection?: HierarchySelection | null;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function HierarchySelector({ 
   onSelectionChange, 
   initialSelection, 
-  className = "" 
+  className = "",
+  disabled = false
 }: HierarchySelectorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,33 +74,47 @@ export default function HierarchySelector({
   // API base URL
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+  const { token: authToken } = useAuth();
+  
   // API helper function
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('token') ||
+    // First try to use the token from AuthContext
+    const token = authToken || 
+                  // Fallbacks for backward compatibility
+                  localStorage.getItem('token') ||
                   sessionStorage.getItem('token') ||
                   localStorage.getItem('authToken') ||
                   sessionStorage.getItem('authToken') ||
                   localStorage.getItem('accessToken') ||
-                  sessionStorage.getItem('accessToken');
+                  sessionStorage.getItem('accessToken') ||
+                  document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
 
+    // Log token presence for debugging
+    console.log('HierarchySelector: Token available?', !!token);
+    
     const defaultHeaders = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
     };
 
+    console.log('Making API call to:', `${API_BASE_URL}${endpoint}`);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
         ...defaultHeaders,
         ...options.headers,
       },
+      // Add credentials to include cookies in the request
+      credentials: 'include',
     });
 
     if (!response.ok) {
+      console.error('API call failed:', response.status, response.statusText);
       throw new Error(`API call failed: ${response.status} ${response.statusText}`);
     }
     return response.json();
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, authToken]);
 
   // Load hierarchy data
   const loadHierarchyData = useCallback(async () => {
@@ -312,6 +329,8 @@ export default function HierarchySelector({
               key={level.value}
               type="button" // Explicitly set type to button to prevent form submission
               onClick={(e) => {
+                if (disabled) return;
+                
                 // Prevent default to stop any form submission
                 e.preventDefault();
                 e.stopPropagation();
@@ -322,11 +341,12 @@ export default function HierarchySelector({
                 // Don't notify selection change here - we'll do that after region selection
                 // This prevents the error when just changing the level
               }}
+              disabled={disabled}
               className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
                 selectedLevel === level.value
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className="text-lg">{level.icon}</div>
               <div>{level.label}</div>
