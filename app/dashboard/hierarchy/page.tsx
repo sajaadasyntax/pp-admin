@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { apiUrl } from '../../config/api';
 import Link from 'next/link';
 
 interface HierarchyStats {
@@ -18,8 +19,7 @@ export default function HierarchyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // API base URL
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // API base URL is imported from config
 
   // Fetch hierarchy statistics
   const fetchStats = async () => {
@@ -29,7 +29,7 @@ export default function HierarchyPage() {
 
       const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
-      const response = await fetch(`${API_BASE_URL}/hierarchical-users/stats`, {
+      const response = await fetch(`${apiUrl}/hierarchical-users/stats`, {
         headers: {
           'Content-Type': 'application/json',
           ...(authToken && { 'Authorization': `Bearer ${authToken}` }),

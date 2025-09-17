@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { apiUrl } from '../../../config/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import UserManagement from '../../../components/UserManagement';
 import Link from 'next/link';
@@ -76,8 +77,7 @@ export default function AdminUnitsPage() {
     localityId: ''
   });
 
-  // API base URL
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // API base URL is imported from config
 
   // API helper function
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
@@ -88,7 +88,7 @@ export default function AdminUnitsPage() {
       ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${apiUrl}${endpoint}`, {
       ...options,
       headers: {
         ...defaultHeaders,
@@ -102,7 +102,7 @@ export default function AdminUnitsPage() {
     }
     
     return response.json();
-  }, [API_BASE_URL, token]);
+  }, [token]);
 
   // Fetch regions
   const fetchRegions = useCallback(async () => {

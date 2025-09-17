@@ -1,9 +1,10 @@
 // API client service for connecting to the backend
 import { UserData, ContentData, BulletinData, PlanData, SurveyData, VotingData } from '../types';
 import subscriptionService from '../services/subscriptionService';
+import { apiUrl, getApiUrl } from '@/app/config/api';
 
-export const API_BASE_URL = 'http://localhost:5000/api';
-export const PUBLIC_URL = 'http://localhost:5000';
+// Centralized base URL comes from config
+export const PUBLIC_URL = apiUrl.replace(/\/api$/, '');
 
 // Helper function for handling API responses
 const handleResponse = async (response: Response) => {
@@ -50,9 +51,9 @@ export const apiClient = {
   // Auth endpoints
   auth: {
     login: async (mobileNumber: string, password: string) => {
-      console.log('Making login request to:', `${API_BASE_URL}/auth/login`);
+      console.log('Making login request to:', `${apiUrl}/auth/login`);
       try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetch(`${apiUrl}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mobileNumber, password }),
@@ -71,7 +72,7 @@ export const apiClient = {
       }
     },
     logout: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      const response = await fetch(`${apiUrl}/auth/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +86,7 @@ export const apiClient = {
   // User endpoints
   users: {
     getProfile: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      const response = await fetch(`${apiUrl}/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -93,7 +94,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getAllUsers: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/users`, {
+      const response = await fetch(`${apiUrl}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -101,7 +102,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getUserById: async (token: string, userId: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const response = await fetch(`${apiUrl}/users/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -109,7 +110,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createUser: async (token: string, userData: UserData) => {
-      const response = await fetch(`${API_BASE_URL}/users`, {
+      const response = await fetch(`${apiUrl}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +121,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateUser: async (token: string, userId: string, userData: UserData) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const response = await fetch(`${apiUrl}/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteUser: async (token: string, userId: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const response = await fetch(`${apiUrl}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -146,8 +147,8 @@ export const apiClient = {
     getAllContent: async (token: string, params: Record<string, string> = {}) => {
       const queryParams = new URLSearchParams(params).toString();
       const url = queryParams ? 
-        `${API_BASE_URL}/content?${queryParams}` : 
-        `${API_BASE_URL}/content`;
+        `${apiUrl}/content?${queryParams}` : 
+        `${apiUrl}/content`;
       
       const response = await fetch(url, {
         headers: {
@@ -157,7 +158,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getContentById: async (token: string, contentId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/${contentId}`, {
+      const response = await fetch(`${apiUrl}/content/${contentId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -165,7 +166,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createContent: async (token: string, contentData: ContentData) => {
-      const response = await fetch(`${API_BASE_URL}/content`, {
+      const response = await fetch(`${apiUrl}/content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +177,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateContent: async (token: string, contentId: string, contentData: ContentData) => {
-      const response = await fetch(`${API_BASE_URL}/content/${contentId}`, {
+      const response = await fetch(`${apiUrl}/content/${contentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +188,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteContent: async (token: string, contentId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/${contentId}`, {
+      const response = await fetch(`${apiUrl}/content/${contentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -196,7 +197,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     togglePublishContent: async (token: string, contentId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/${contentId}/publish`, {
+      const response = await fetch(`${apiUrl}/content/${contentId}/publish`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -209,7 +210,7 @@ export const apiClient = {
   // Bulletins endpoints
   bulletins: {
     getAllBulletins: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/bulletins`, {
+      const response = await fetch(`${apiUrl}/content/bulletins`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -223,7 +224,7 @@ export const apiClient = {
         
         // Get first region as fallback (this is a last resort)
         try {
-          const regionsResponse = await fetch(`${API_BASE_URL}/hierarchy-management/regions`, {
+          const regionsResponse = await fetch(`${apiUrl}/hierarchy-management/regions`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -259,7 +260,7 @@ export const apiClient = {
         
         console.log("FINAL DATA TO SEND:", dataToSend);
         
-        const response = await fetch(`${API_BASE_URL}/content/bulletins`, {
+        const response = await fetch(`${apiUrl}/content/bulletins`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -287,7 +288,7 @@ export const apiClient = {
       formData.append('bulletinData', JSON.stringify(dataToSend));
       formData.append('image', imageFile);
       
-      const response = await fetch(`${API_BASE_URL}/content/bulletins`, {
+      const response = await fetch(`${apiUrl}/content/bulletins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -303,7 +304,7 @@ export const apiClient = {
         
         // Get first region as fallback (this is a last resort)
         try {
-          const regionsResponse = await fetch(`${API_BASE_URL}/hierarchy-management/regions`, {
+          const regionsResponse = await fetch(`${apiUrl}/hierarchy-management/regions`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -339,7 +340,7 @@ export const apiClient = {
         
         console.log("FINAL UPDATE DATA TO SEND:", dataToSend);
         
-        const response = await fetch(`${API_BASE_URL}/content/bulletins/${bulletinId}`, {
+        const response = await fetch(`${apiUrl}/content/bulletins/${bulletinId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -367,7 +368,7 @@ export const apiClient = {
       formData.append('bulletinData', JSON.stringify(dataToSend));
       formData.append('image', imageFile);
       
-      const response = await fetch(`${API_BASE_URL}/content/bulletins/${bulletinId}`, {
+      const response = await fetch(`${apiUrl}/content/bulletins/${bulletinId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -377,7 +378,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteBulletin: async (token: string, bulletinId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/bulletins/${bulletinId}`, {
+      const response = await fetch(`${apiUrl}/content/bulletins/${bulletinId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -391,8 +392,8 @@ export const apiClient = {
   archive: {
     getAllDocuments: async (token: string, category?: string) => {
       const url = category ? 
-        `${API_BASE_URL}/content/archive?category=${encodeURIComponent(category)}` :
-        `${API_BASE_URL}/content/archive`;
+        `${apiUrl}/content/archive?category=${encodeURIComponent(category)}` :
+        `${apiUrl}/content/archive`;
       
       const response = await fetch(url, {
         headers: {
@@ -402,7 +403,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     uploadDocument: async (token: string, formData: FormData) => {
-      const response = await fetch(`${API_BASE_URL}/content/archive/upload`, {
+      const response = await fetch(`${apiUrl}/content/archive/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -412,7 +413,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteDocument: async (token: string, documentId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/archive/${documentId}`, {
+      const response = await fetch(`${apiUrl}/content/archive/${documentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -425,7 +426,7 @@ export const apiClient = {
   // Surveys endpoints
   surveys: {
     getAllSurveys: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys`, {
+      const response = await fetch(`${apiUrl}/content/surveys`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -433,7 +434,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getSurveyById: async (token: string, surveyId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys/${surveyId}`, {
+      const response = await fetch(`${apiUrl}/content/surveys/${surveyId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -441,7 +442,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createSurvey: async (token: string, surveyData: SurveyData) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys`, {
+      const response = await fetch(`${apiUrl}/content/surveys`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -452,7 +453,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateSurvey: async (token: string, surveyId: string, surveyData: SurveyData) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys/${surveyId}`, {
+      const response = await fetch(`${apiUrl}/content/surveys/${surveyId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -463,7 +464,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteSurvey: async (token: string, surveyId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys/${surveyId}`, {
+      const response = await fetch(`${apiUrl}/content/surveys/${surveyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -472,7 +473,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getSurveyResponses: async (token: string, surveyId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/surveys/${surveyId}/responses`, {
+      const response = await fetch(`${apiUrl}/content/surveys/${surveyId}/responses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -484,7 +485,7 @@ export const apiClient = {
   // Voting endpoints
   voting: {
     getAllVotingItems: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting`, {
+      const response = await fetch(`${apiUrl}/content/voting`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -492,7 +493,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getVotingItemById: async (token: string, votingId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting/${votingId}`, {
+      const response = await fetch(`${apiUrl}/content/voting/${votingId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -500,7 +501,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createVotingItem: async (token: string, votingData: VotingData) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting`, {
+      const response = await fetch(`${apiUrl}/content/voting`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -511,7 +512,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateVotingItem: async (token: string, votingId: string, votingData: VotingData) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting/${votingId}`, {
+      const response = await fetch(`${apiUrl}/content/voting/${votingId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -522,7 +523,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteVotingItem: async (token: string, votingId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting/${votingId}`, {
+      const response = await fetch(`${apiUrl}/content/voting/${votingId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -531,7 +532,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getVotingResults: async (token: string, votingId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/voting/${votingId}/results`, {
+      const response = await fetch(`${apiUrl}/content/voting/${votingId}/results`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -544,8 +545,8 @@ export const apiClient = {
   reports: {
     getAllReports: async (token: string, status?: string) => {
       const url = status ? 
-        `${API_BASE_URL}/content/reports?status=${encodeURIComponent(status)}` :
-        `${API_BASE_URL}/content/reports`;
+        `${apiUrl}/content/reports?status=${encodeURIComponent(status)}` :
+        `${apiUrl}/content/reports`;
       
       const response = await fetch(url, {
         headers: {
@@ -555,7 +556,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getReportById: async (token: string, reportId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/reports/${reportId}`, {
+      const response = await fetch(`${apiUrl}/content/reports/${reportId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -563,7 +564,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateReportStatus: async (token: string, reportId: string, status: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/reports/${reportId}/status`, {
+      const response = await fetch(`${apiUrl}/content/reports/${reportId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -574,7 +575,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteReport: async (token: string, reportId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/reports/${reportId}`, {
+      const response = await fetch(`${apiUrl}/content/reports/${reportId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -588,8 +589,8 @@ export const apiClient = {
   memberships: {
     getAllMemberships: async (token: string, status?: string) => {
       const url = status ? 
-        `${API_BASE_URL}/users/memberships?status=${encodeURIComponent(status)}` : 
-        `${API_BASE_URL}/users/memberships`;
+        `${apiUrl}/users/memberships?status=${encodeURIComponent(status)}` : 
+        `${apiUrl}/users/memberships`;
       
       const response = await fetch(url, {
         headers: {
@@ -599,7 +600,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createMember: async (token: string, memberData: UserData) => {
-      const response = await fetch(`${API_BASE_URL}/users/members`, {
+      const response = await fetch(`${apiUrl}/users/members`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -610,7 +611,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     getMemberDetails: async (token: string, memberId: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${memberId}/details`, {
+      const response = await fetch(`${apiUrl}/users/${memberId}/details`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -618,7 +619,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateMembershipStatus: async (token: string, userId: string, status: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+      const response = await fetch(`${apiUrl}/users/${userId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -629,7 +630,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     resetPassword: async (token: string, userId: string, newPassword: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}/reset-password`, {
+      const response = await fetch(`${apiUrl}/users/${userId}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -640,7 +641,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deleteMembership: async (token: string, userId: string) => {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const response = await fetch(`${apiUrl}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -653,7 +654,7 @@ export const apiClient = {
   // Subscription plans endpoints
   subscriptionPlans: {
     getAllPlans: async (token: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscription-plans`, {
+      const response = await fetch(`${apiUrl}/content/subscription-plans`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -661,7 +662,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     createPlan: async (token: string, planData: PlanData) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscription-plans`, {
+      const response = await fetch(`${apiUrl}/content/subscription-plans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -672,7 +673,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     updatePlan: async (token: string, planId: string, planData: PlanData) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscription-plans/${planId}`, {
+      const response = await fetch(`${apiUrl}/content/subscription-plans/${planId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -683,7 +684,7 @@ export const apiClient = {
       return handleResponse(response);
     },
     deletePlan: async (token: string, planId: string) => {
-      const response = await fetch(`${API_BASE_URL}/content/subscription-plans/${planId}`, {
+      const response = await fetch(`${apiUrl}/content/subscription-plans/${planId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -695,4 +696,4 @@ export const apiClient = {
   
   // Subscription management using the new subscription service
   subscriptions: subscriptionService,
-}; 
+};
