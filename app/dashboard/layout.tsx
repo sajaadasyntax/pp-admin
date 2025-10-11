@@ -147,7 +147,7 @@ export default function DashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-grow space-y-1 p-2">
+          <nav className="flex-grow space-y-1 overflow-y-auto p-2">
             {navItems.map((item) => (
               <div key={item.path} className="mb-1">
                 <Link

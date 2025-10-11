@@ -1,7 +1,7 @@
 // API client service for connecting to the backend
 import { UserData, ContentData, BulletinData, PlanData, SurveyData, VotingData } from '../types';
 import subscriptionService from '../services/subscriptionService';
-import { apiUrl, getApiUrl } from '@/app/config/api';
+import { apiUrl } from '@/app/config/api';
 
 // Centralized base URL comes from config
 export const PUBLIC_URL = apiUrl.replace(/\/api$/, '');
