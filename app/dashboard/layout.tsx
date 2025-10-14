@@ -70,6 +70,7 @@ export default function DashboardLayout({
     { name: "الاشتراكات", path: "/dashboard/subscriptions" },
     { name: "التصويت والاستطلاعات", path: "/dashboard/voting-surveys" },
     { name: "النشرة", path: "/dashboard/bulletin" },
+    { name: "غرف المحادثة", path: "/dashboard/chatrooms" },
     { 
       name: "التسلسل الإداري", 
       path: "/dashboard/hierarchy",
