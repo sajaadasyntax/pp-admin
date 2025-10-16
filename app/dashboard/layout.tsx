@@ -66,7 +66,6 @@ export default function DashboardLayout({
   const navItems = [
     { name: "الرئيسية", path: "/dashboard" },
     { name: "التقارير", path: "/dashboard/reports" },
-    { name: "العضويات", path: "/dashboard/memberships" },
     { name: "الاشتراكات", path: "/dashboard/subscriptions" },
     { name: "التصويت والاستطلاعات", path: "/dashboard/voting-surveys" },
     { name: "النشرة", path: "/dashboard/bulletin" },
@@ -84,6 +83,7 @@ export default function DashboardLayout({
     },
     // Only show these pages to root admin
     ...(user?.level === "مدير النظام" ? [
+      { name: "العضويات", path: "/dashboard/memberships" },
       { name: "الأرشيف", path: "/dashboard/archive" },
       { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
       { name: "طلبات الحذف", path: "/dashboard/deletion-requests" }

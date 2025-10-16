@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
 import { apiClient } from "../../../context/apiContext";
+import RootAdminOnly from "../../../components/RootAdminOnly";
 
 // Define interface for member details
 interface MemberDetails {
@@ -185,49 +186,56 @@ export default function MemberDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[var(--neutral-200)] border-t-[var(--primary-500)] mx-auto"></div>
-          <p className="text-[var(--neutral-500)]">جاري تحميل بيانات العضو...</p>
+      <RootAdminOnly>
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[var(--neutral-200)] border-t-[var(--primary-500)] mx-auto"></div>
+            <p className="text-[var(--neutral-500)]">جاري تحميل بيانات العضو...</p>
+          </div>
         </div>
-      </div>
+      </RootAdminOnly>
     );
   }
 
   if (error) {
     return (
-      <div className="app-card p-8 text-center">
-        <div className="mb-4 text-5xl text-[var(--error-500)]">⚠️</div>
-        <h2 className="mb-2 text-xl font-bold text-[var(--neutral-900)]">حدث خطأ</h2>
-        <p className="text-[var(--neutral-500)]">{error}</p>
-        <button
-          onClick={() => router.push('/dashboard/memberships')}
-          className="app-button-secondary mt-4"
-        >
-          العودة إلى قائمة العضويات
-        </button>
-      </div>
+      <RootAdminOnly>
+        <div className="app-card p-8 text-center">
+          <div className="mb-4 text-5xl text-[var(--error-500)]">⚠️</div>
+          <h2 className="mb-2 text-xl font-bold text-[var(--neutral-900)]">حدث خطأ</h2>
+          <p className="text-[var(--neutral-500)]">{error}</p>
+          <button
+            onClick={() => router.push('/dashboard/memberships')}
+            className="app-button-secondary mt-4"
+          >
+            العودة إلى قائمة العضويات
+          </button>
+        </div>
+      </RootAdminOnly>
     );
   }
 
   if (!member) {
     return (
-      <div className="app-card p-8 text-center">
-        <div className="mb-4 text-5xl text-[var(--error-500)]">⚠️</div>
-        <h2 className="mb-2 text-xl font-bold text-[var(--neutral-900)]">لم يتم العثور على العضو</h2>
-        <p className="text-[var(--neutral-500)]">العضو المطلوب غير موجود أو تم حذفه</p>
-        <button
-          onClick={() => router.push('/dashboard/memberships')}
-          className="app-button-secondary mt-4"
-        >
-          العودة إلى قائمة العضويات
-        </button>
-      </div>
+      <RootAdminOnly>
+        <div className="app-card p-8 text-center">
+          <div className="mb-4 text-5xl text-[var(--error-500)]">⚠️</div>
+          <h2 className="mb-2 text-xl font-bold text-[var(--neutral-900)]">لم يتم العثور على العضو</h2>
+          <p className="text-[var(--neutral-500)]">العضو المطلوب غير موجود أو تم حذفه</p>
+          <button
+            onClick={() => router.push('/dashboard/memberships')}
+            className="app-button-secondary mt-4"
+          >
+            العودة إلى قائمة العضويات
+          </button>
+        </div>
+      </RootAdminOnly>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <RootAdminOnly>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[var(--neutral-900)]">بيانات العضو</h1>
         <div className="flex gap-2">
@@ -446,5 +454,6 @@ export default function MemberDetailsPage() {
         </div>
       </div>
     </div>
+    </RootAdminOnly>
   );
 }

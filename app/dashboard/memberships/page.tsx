@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Membership } from "../../types";
 import { apiClient } from "../../context/apiContext";
 import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
+import RootAdminOnly from "../../components/RootAdminOnly";
 
 export default function MembershipsPage() {
   const router = useRouter();
@@ -499,17 +500,20 @@ export default function MembershipsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
-          <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
+      <RootAdminOnly>
+        <div className="flex h-screen items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+            <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
+          </div>
         </div>
-      </div>
+      </RootAdminOnly>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <RootAdminOnly>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--neutral-900)]">العضويات</h1>
@@ -1158,5 +1162,6 @@ export default function MembershipsPage() {
         </div>
       </div>
     </div>
+    </RootAdminOnly>
   );
 } 
