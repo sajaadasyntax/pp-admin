@@ -29,9 +29,14 @@ export default function SubscriptionsPage() {
         // Show unapproved plans for root admins
         queryParams.isApproved = false;
       } else if (activeTab === 'donations') {
-        // Show approved donations
-        queryParams.isApproved = true;
+        // Show approved donations + user's own unapproved donations
         queryParams.isDonation = true;
+        if (user?.adminLevel === 'ADMIN') {
+          // Root admin sees all approved donations
+          queryParams.isApproved = true;
+        }
+        // Other admins see approved donations + their own unapproved donations
+        // Don't filter by isApproved - let backend handle this
       } else {
         // Show approved subscriptions + user's own unapproved plans
         queryParams.isDonation = false;
@@ -64,7 +69,8 @@ export default function SubscriptionsPage() {
 
       // Fetch subscriptions with receipts
       const subscriptions = await apiClient.subscriptions.getSubscriptions(token!, { 
-        paymentStatus: 'pending_review' 
+        paymentStatus: 'pending_review',
+        isDonation: activeTab === 'donations' ? true : (activeTab === 'subscriptions' ? false : undefined)
       });
       
       setReceipts(subscriptions);

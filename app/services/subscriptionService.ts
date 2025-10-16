@@ -214,12 +214,14 @@ const subscriptionService = {
     userId?: string;
     status?: string;
     paymentStatus?: string;
+    isDonation?: boolean;
   } = {}) => {
     const queryParams = new URLSearchParams();
     if (options.planId) queryParams.append('planId', options.planId);
     if (options.userId) queryParams.append('userId', options.userId);
     if (options.status) queryParams.append('status', options.status);
     if (options.paymentStatus) queryParams.append('paymentStatus', options.paymentStatus);
+    if (options.isDonation !== undefined) queryParams.append('isDonation', options.isDonation.toString());
     
     const url = `${apiUrl}/subscriptions?${queryParams.toString()}`;
     const response = await fetch(url, {
