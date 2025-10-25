@@ -248,7 +248,7 @@ export default function NationalLevelsPage() {
         {nationalLevels.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             <p className="text-lg">لا توجد مستويات قومية مضافة بعد</p>
-            <p className="text-sm mt-2">انقر على "إضافة جديد" لإنشاء مستوى قومي</p>
+            <p className="text-sm mt-2">انقر على &quot;إضافة جديد&quot; لإنشاء مستوى قومي</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

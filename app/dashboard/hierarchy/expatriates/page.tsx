@@ -267,7 +267,7 @@ export default function ExpatriateRegionsPage() {
         {regions.length === 0 ? (
           <div className="col-span-full bg-white p-12 rounded-lg shadow-md border text-center text-gray-500">
             <p className="text-lg">لا توجد قطاعات مغتربين مضافة بعد</p>
-            <p className="text-sm mt-2">انقر على "إضافة قطاع جديد" لإنشاء قطاع</p>
+            <p className="text-sm mt-2">انقر على &quot;إضافة قطاع جديد&quot; لإنشاء قطاع</p>
           </div>
         ) : (
           regions.map((region) => (

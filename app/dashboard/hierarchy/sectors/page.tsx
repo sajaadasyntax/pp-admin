@@ -371,7 +371,7 @@ export default function SectorsPage() {
           {sectors.length === 0 ? (
             <div className="bg-white p-12 rounded-lg shadow-md border text-center text-gray-500">
               <p className="text-lg">لا توجد قطاعات في {levelLabels[selectedLevel]} بعد</p>
-              <p className="text-sm mt-2">انقر على "إضافة قطاع جديد" لإنشاء قطاع</p>
+              <p className="text-sm mt-2">انقر على &quot;إضافة قطاع جديد&quot; لإنشاء قطاع</p>
             </div>
           ) : (
             <div className="space-y-8">
