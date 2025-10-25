@@ -11,6 +11,9 @@ interface HierarchyStats {
   adminUnits: number;
   districts: number;
   totalUsers: number;
+  nationalLevels?: number;
+  expatriateRegions?: number;
+  sectorLevels?: number;
 }
 
 export default function HierarchyPage() {
@@ -82,7 +85,18 @@ export default function HierarchyPage() {
     );
   }
 
-  const hierarchyLevels = [
+  // Original Hierarchy Levels
+  const originalHierarchy = [
+    {
+      title: 'المستوى القومي',
+      description: 'إدارة المستوى القومي (أعلى مستوى)',
+      icon: '🌟',
+      href: '/dashboard/hierarchy/national-levels',
+      count: stats?.nationalLevels || 1,
+      color: 'bg-yellow-500',
+      hoverColor: 'hover:bg-yellow-600',
+      category: 'original'
+    },
     {
       title: 'الولايات',
       description: 'إدارة الولايات والمناطق',
@@ -90,7 +104,8 @@ export default function HierarchyPage() {
       href: '/dashboard/hierarchy/regions',
       count: stats?.regions || 0,
       color: 'bg-blue-500',
-      hoverColor: 'hover:bg-blue-600'
+      hoverColor: 'hover:bg-blue-600',
+      category: 'original'
     },
     {
       title: 'المحليات',
@@ -99,7 +114,8 @@ export default function HierarchyPage() {
       href: '/dashboard/hierarchy/localities',
       count: stats?.localities || 0,
       color: 'bg-green-500',
-      hoverColor: 'hover:bg-green-600'
+      hoverColor: 'hover:bg-green-600',
+      category: 'original'
     },
     {
       title: 'الوحدات الإدارية',
@@ -108,7 +124,8 @@ export default function HierarchyPage() {
       href: '/dashboard/hierarchy/admin-units',
       count: stats?.adminUnits || 0,
       color: 'bg-purple-500',
-      hoverColor: 'hover:bg-purple-600'
+      hoverColor: 'hover:bg-purple-600',
+      category: 'original'
     },
     {
       title: 'الأحياء',
@@ -117,7 +134,32 @@ export default function HierarchyPage() {
       href: '/dashboard/hierarchy/districts',
       count: stats?.districts || 0,
       color: 'bg-orange-500',
-      hoverColor: 'hover:bg-orange-600'
+      hoverColor: 'hover:bg-orange-600',
+      category: 'original'
+    }
+  ];
+
+  // New Hierarchy Types
+  const newHierarchies = [
+    {
+      title: 'المغتربين',
+      description: 'إدارة قطاعات المغتربين (13 قطاع)',
+      icon: '✈️',
+      href: '/dashboard/hierarchy/expatriates',
+      count: stats?.expatriateRegions || 13,
+      color: 'bg-cyan-500',
+      hoverColor: 'hover:bg-cyan-600',
+      category: 'expatriate'
+    },
+    {
+      title: 'القطاعات',
+      description: 'إدارة القطاعات (اجتماعي، اقتصادي، تنظيمي، سياسي)',
+      icon: '💼',
+      href: '/dashboard/hierarchy/sectors',
+      count: stats?.sectorLevels || 0,
+      color: 'bg-indigo-500',
+      hoverColor: 'hover:bg-indigo-600',
+      category: 'sector'
     }
   ];
 
@@ -179,40 +221,92 @@ export default function HierarchyPage() {
         </div>
       </div>
 
-      {/* Hierarchy Levels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {hierarchyLevels.map((level, index) => (
-          <Link
-            key={index}
-            href={level.href}
-            className="group block bg-white p-6 rounded-lg shadow-md border hover:shadow-lg transition-shadow duration-200"
-          >
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="p-4 bg-gray-100 rounded-full group-hover:bg-gray-200 transition-colors duration-200">
-                  <span className="text-3xl">{level.icon}</span>
+      {/* Original Hierarchy Section */}
+      <div className="mb-8">
+        <div className="flex items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">التسلسل الهرمي الجغرافي</h2>
+          <span className="mr-3 px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+            التسلسل الأساسي
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {originalHierarchy.map((level, index) => (
+            <Link
+              key={index}
+              href={level.href}
+              className="group block bg-white p-6 rounded-lg shadow-md border hover:shadow-lg transition-shadow duration-200"
+            >
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="p-4 bg-gray-100 rounded-full group-hover:bg-gray-200 transition-colors duration-200">
+                    <span className="text-3xl">{level.icon}</span>
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                      {level.title}
+                    </h3>
+                    <span className={`px-3 py-1 text-sm font-medium text-white rounded-full ${level.color}`}>
+                      {level.count}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-gray-600 text-sm">{level.description}</p>
+                  <div className="mt-4 flex items-center text-blue-600 group-hover:text-blue-700">
+                    <span className="text-sm font-medium">إدارة</span>
+                    <svg className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-              <div className="ml-4 flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-                    {level.title}
-                  </h3>
-                  <span className={`px-3 py-1 text-sm font-medium text-white rounded-full ${level.color}`}>
-                    {level.count}
-                  </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* New Hierarchies Section */}
+      <div className="mb-8">
+        <div className="flex items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">التسلسلات الهرمية الجديدة</h2>
+          <span className="mr-3 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+            تم إضافتها حديثاً
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {newHierarchies.map((level, index) => (
+            <Link
+              key={index}
+              href={level.href}
+              className="group block bg-white p-6 rounded-lg shadow-md border hover:shadow-lg transition-shadow duration-200"
+            >
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="p-4 bg-gray-100 rounded-full group-hover:bg-gray-200 transition-colors duration-200">
+                    <span className="text-3xl">{level.icon}</span>
+                  </div>
                 </div>
-                <p className="mt-2 text-gray-600">{level.description}</p>
-                <div className="mt-4 flex items-center text-blue-600 group-hover:text-blue-700">
-                  <span className="text-sm font-medium">إدارة</span>
-                  <svg className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                <div className="ml-4 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
+                      {level.title}
+                    </h3>
+                    <span className={`px-3 py-1 text-sm font-medium text-white rounded-full ${level.color}`}>
+                      {level.count}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-gray-600 text-sm">{level.description}</p>
+                  <div className="mt-4 flex items-center text-blue-600 group-hover:text-blue-700">
+                    <span className="text-sm font-medium">إدارة</span>
+                    <svg className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Quick Actions */}
