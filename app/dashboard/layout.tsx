@@ -75,10 +75,13 @@ export default function DashboardLayout({
       path: "/dashboard/hierarchy",
       children: [
         { name: "نظرة عامة", path: "/dashboard/hierarchy" },
+        { name: "المستوى القومي", path: "/dashboard/hierarchy/national-levels" },
         { name: "الولايات", path: "/dashboard/hierarchy/regions" },
         { name: "المحليات", path: "/dashboard/hierarchy/localities" },
         { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
         { name: "الأحياء", path: "/dashboard/hierarchy/districts" },
+        { name: "المغتربين", path: "/dashboard/hierarchy/expatriates" },
+        { name: "القطاعات", path: "/dashboard/hierarchy/sectors" },
       ]
     },
     // Only show these pages to root admin
