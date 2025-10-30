@@ -72,6 +72,18 @@ export default function ExpatriateRegionsPage() {
     e.preventDefault();
     
     try {
+      // Prevent submitting duplicate names on the client
+      const normalizedNewName = formData.name.trim();
+      if (!normalizedNewName) {
+        alert('الرجاء إدخال الاسم');
+        return;
+      }
+      const isDuplicate = regions.some(r => r.name.trim() === normalizedNewName && (!editingRegion || r.id !== editingRegion.id));
+      if (isDuplicate) {
+        alert('هذا الاسم موجود بالفعل. الرجاء اختيار اسم آخر.');
+        return;
+      }
+
       const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const url = editingRegion 
         ? `${apiUrl}/expatriate-hierarchy/expatriate-regions/${editingRegion.id}`
@@ -87,6 +99,22 @@ export default function ExpatriateRegionsPage() {
       });
 
       if (!response.ok) {
+        // Try to parse backend error for Prisma unique constraint (P2002)
+        try {
+          const err = await response.json();
+          if (
+            err?.code === 'P2002' ||
+            err?.meta?.target?.includes?.('name') ||
+            String(err?.message || '').includes('Unique constraint failed')
+          ) {
+            alert('هذا الاسم موجود بالفعل. الرجاء اختيار اسم آخر.');
+            return;
+          }
+          if (err?.message) {
+            alert(err.message);
+            return;
+          }
+        } catch {}
         throw new Error('Failed to save');
       }
 
