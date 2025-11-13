@@ -70,8 +70,9 @@ export default function DashboardLayout({
     { name: "التصويت والاستطلاعات", path: "/dashboard/voting-surveys" },
     { name: "النشرة", path: "/dashboard/bulletin" },
     { name: "غرف المحادثة", path: "/dashboard/chatrooms" },
+    // Original Geographic Hierarchy
     { 
-      name: "التسلسل الإداري", 
+      name: "التسلسل الهرمي الجغرافي", 
       path: "/dashboard/hierarchy",
       children: [
         { name: "نظرة عامة", path: "/dashboard/hierarchy" },
@@ -80,8 +81,24 @@ export default function DashboardLayout({
         { name: "المحليات", path: "/dashboard/hierarchy/localities" },
         { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
         { name: "الأحياء", path: "/dashboard/hierarchy/districts" },
-        { name: "المغتربين", path: "/dashboard/hierarchy/expatriates" },
-        { name: "القطاعات", path: "/dashboard/hierarchy/sectors" },
+      ]
+    },
+    // Expatriates Hierarchy (separate, not related to original)
+    { 
+      name: "المغتربين", 
+      path: "/dashboard/expatriates",
+      children: [
+        { name: "نظرة عامة", path: "/dashboard/expatriates" },
+        { name: "قطاعات المغتربين", path: "/dashboard/expatriates/regions" },
+      ]
+    },
+    // Sectors (can be created for both hierarchies)
+    { 
+      name: "القطاعات", 
+      path: "/dashboard/sectors",
+      children: [
+        { name: "نظرة عامة", path: "/dashboard/sectors" },
+        { name: "إدارة القطاعات", path: "/dashboard/sectors/manage" },
       ]
     },
     // Only show these pages to root admin
@@ -252,4 +269,4 @@ export default function DashboardLayout({
       </main>
     </div>
   );
-} 
+}

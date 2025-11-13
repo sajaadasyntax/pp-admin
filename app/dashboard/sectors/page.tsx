@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config/api';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type SectorType = 'SOCIAL' | 'ECONOMIC' | 'ORGANIZATIONAL' | 'POLITICAL';
 type SectorLevel = 'national' | 'region' | 'locality' | 'adminUnit' | 'district';
+type HierarchyType = 'original' | 'expatriates';
 
 interface Sector {
   id: string;
@@ -15,6 +17,16 @@ interface Sector {
   sectorType: SectorType;
   description?: string;
   active: boolean;
+  expatriateRegionId?: string;
+  expatriateRegion?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ExpatriateRegion {
+  id: string;
+  name: string;
 }
 
 const sectorTypeLabels: Record<SectorType, string> = {
@@ -49,8 +61,16 @@ const levelEndpoints: Record<SectorLevel, string> = {
 
 export default function SectorsPage() {
   const { user, token } = useAuth();
+  const searchParams = useSearchParams();
+  const [hierarchyType, setHierarchyType] = useState<HierarchyType>(
+    (searchParams.get('hierarchy') as HierarchyType) || 'original'
+  );
   const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('national');
+  const [selectedExpatriateRegion, setSelectedExpatriateRegion] = useState<string | null>(
+    searchParams.get('region') || null
+  );
   const [sectors, setSectors] = useState<Sector[]>([]);
+  const [expatriateRegions, setExpatriateRegions] = useState<ExpatriateRegion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Sector | null>(null);
@@ -59,15 +79,45 @@ export default function SectorsPage() {
     code: '',
     sectorType: 'SOCIAL' as SectorType,
     description: '',
-    active: true
+    active: true,
+    expatriateRegionId: ''
   });
+
+  const fetchExpatriateRegions = async () => {
+    try {
+      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpatriateRegions(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   const fetchSectors = async () => {
     try {
       setLoading(true);
       const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
-      const response = await fetch(`${apiUrl}/sector-hierarchy/${endpoint}`, {
+      
+      let url = `${apiUrl}/sector-hierarchy/${endpoint}`;
+      if (hierarchyType === 'expatriates' && selectedExpatriateRegion) {
+        url += `?expatriateRegionId=${selectedExpatriateRegion}`;
+      } else if (hierarchyType === 'expatriates') {
+        url += `?expatriateOnly=true`;
+      } else {
+        url += `?originalOnly=true`;
+      }
+
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
@@ -86,8 +136,14 @@ export default function SectorsPage() {
   };
 
   useEffect(() => {
+    if (hierarchyType === 'expatriates') {
+      fetchExpatriateRegions();
+    }
+  }, [hierarchyType, token]);
+
+  useEffect(() => {
     fetchSectors();
-  }, [selectedLevel, token]);
+  }, [selectedLevel, hierarchyType, selectedExpatriateRegion, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,19 +154,31 @@ export default function SectorsPage() {
         ? `${apiUrl}/sector-hierarchy/${endpoint}/${editing.id}`
         : `${apiUrl}/sector-hierarchy/${endpoint}`;
       
+      const payload: any = {
+        name: formData.name,
+        code: formData.code,
+        sectorType: formData.sectorType,
+        description: formData.description,
+        active: formData.active
+      };
+
+      if (hierarchyType === 'expatriates' && formData.expatriateRegionId) {
+        payload.expatriateRegionId = formData.expatriateRegionId;
+      }
+
       const response = await fetch(url, {
         method: editing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         setShowForm(false);
         setEditing(null);
-        setFormData({ name: '', code: '', sectorType: 'SOCIAL', description: '', active: true });
+        setFormData({ name: '', code: '', sectorType: 'SOCIAL', description: '', active: true, expatriateRegionId: '' });
         fetchSectors();
       }
     } catch (error) {
@@ -125,7 +193,8 @@ export default function SectorsPage() {
       code: sector.code || '',
       sectorType: sector.sectorType,
       description: sector.description || '',
-      active: sector.active
+      active: sector.active,
+      expatriateRegionId: sector.expatriateRegionId || ''
     });
     setShowForm(true);
   };
@@ -157,25 +226,105 @@ export default function SectorsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">التسلسل الهرمي للقطاعات</h1>
-          <p className="text-gray-600 mt-1">القطاعات الأربعة عبر جميع المستويات</p>
-        </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setEditing(null);
-            setFormData({ name: '', code: '', sectorType: 'SOCIAL', description: '', active: true });
-          }}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-        >
-          + إضافة قطاع
-        </button>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">القطاعات</h1>
+        <p className="text-gray-600 mt-1">إدارة القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل مستوى في كلا النظامين</p>
       </div>
+
+      {/* Info Banner */}
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6">
+        <div className="flex items-start">
+          <span className="text-3xl ml-4">💡</span>
+          <div>
+            <h3 className="text-indigo-900 font-semibold text-lg mb-2">عن القطاعات</h3>
+            <p className="text-indigo-800">
+              يمكن إنشاء القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل مستوى في:
+              <strong> التسلسل الهرمي الجغرافي</strong> (المستوى القومي → الولاية → المحلية → الوحدة الإدارية → الحي)
+              و <strong>نظام المغتربين</strong> (لكل قطاع من قطاعات المغتربين).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Hierarchy Type Selector */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-3">اختر النظام</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setHierarchyType('original');
+              setSelectedExpatriateRegion(null);
+              setShowForm(false);
+              setEditing(null);
+            }}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              hierarchyType === 'original'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            التسلسل الهرمي الجغرافي
+          </button>
+          <button
+            onClick={() => {
+              setHierarchyType('expatriates');
+              setShowForm(false);
+              setEditing(null);
+            }}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              hierarchyType === 'expatriates'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            نظام المغتربين
+          </button>
+        </div>
+      </div>
+
+      {/* Expatriate Region Selector */}
+      {hierarchyType === 'expatriates' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-3">اختر قطاع المغتربين</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setSelectedExpatriateRegion(null);
+                setShowForm(false);
+                setEditing(null);
+              }}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                selectedExpatriateRegion === null
+                  ? 'bg-cyan-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              الكل
+            </button>
+            {expatriateRegions.map(region => (
+              <button
+                key={region.id}
+                onClick={() => {
+                  setSelectedExpatriateRegion(region.id);
+                  setShowForm(false);
+                  setEditing(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  selectedExpatriateRegion === region.id
+                    ? 'bg-cyan-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {region.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Level Selector */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-3">اختر المستوى</h2>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(levelLabels) as SectorLevel[]).map((level) => (
             <button
@@ -197,13 +346,59 @@ export default function SectorsPage() {
         </div>
       </div>
 
+      {/* Add Button */}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={() => {
+            if (hierarchyType === 'expatriates' && !selectedExpatriateRegion) {
+              alert('الرجاء اختيار قطاع المغتربين أولاً');
+              return;
+            }
+            setShowForm(true);
+            setEditing(null);
+            setFormData({ 
+              name: '', 
+              code: '', 
+              sectorType: 'SOCIAL', 
+              description: '', 
+              active: true,
+              expatriateRegionId: selectedExpatriateRegion || ''
+            });
+          }}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+        >
+          + إضافة قطاع
+        </button>
+      </div>
+
       {/* Form Panel */}
       {showForm && (
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">
             {editing ? 'تعديل القطاع' : `إضافة قطاع جديد - ${levelLabels[selectedLevel]}`}
+            {hierarchyType === 'expatriates' && selectedExpatriateRegion && (
+              <span className="text-sm font-normal text-gray-600 mr-2">
+                ({expatriateRegions.find(r => r.id === selectedExpatriateRegion)?.name})
+              </span>
+            )}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {hierarchyType === 'expatriates' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">قطاع المغتربين *</label>
+                <select
+                  value={formData.expatriateRegionId}
+                  onChange={(e) => setFormData({ ...formData, expatriateRegionId: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">اختر قطاع المغتربين</option>
+                  {expatriateRegions.map(region => (
+                    <option key={region.id} value={region.id}>{region.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">الاسم *</label>
@@ -287,7 +482,12 @@ export default function SectorsPage() {
       ) : sectors.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <div className="text-6xl mb-4">💼</div>
-          <p className="text-gray-600">لا توجد قطاعات في {levelLabels[selectedLevel]}</p>
+          <p className="text-gray-600">
+            لا توجد قطاعات في {levelLabels[selectedLevel]}
+            {hierarchyType === 'expatriates' && selectedExpatriateRegion && (
+              <span> لـ {expatriateRegions.find(r => r.id === selectedExpatriateRegion)?.name}</span>
+            )}
+          </p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -319,6 +519,9 @@ export default function SectorsPage() {
                           {sector.active ? 'فعال' : 'غير فعال'}
                         </span>
                       </div>
+                      {sector.expatriateRegion && (
+                        <p className="text-xs text-cyan-600 mb-2">قطاع: {sector.expatriateRegion.name}</p>
+                      )}
                       {sector.code && (
                         <p className="text-sm text-gray-500 mb-2">الكود: {sector.code}</p>
                       )}
