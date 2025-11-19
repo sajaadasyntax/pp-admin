@@ -57,8 +57,12 @@ export default function SectorsPage() {
     code: '',
     sectorType: 'SOCIAL' as SectorType,
     description: '',
-    active: true
+    active: true,
+    expatriateRegionId: '' // Required for sector national levels
   });
+
+  // Expatriate regions for sector national levels
+  const [expatriateRegions, setExpatriateRegions] = useState<Array<{id: string, name: string}>>([]);
 
   // API endpoints mapping
   const levelEndpoints: Record<SectorLevel, string> = {
@@ -103,8 +107,32 @@ export default function SectorsPage() {
     }
   };
 
+  // Fetch expatriate regions for sector national levels
+  const fetchExpatriateRegions = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpatriateRegions(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching expatriate regions:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSectors();
+    if (selectedLevel === 'national') {
+      fetchExpatriateRegions();
+    }
   }, [selectedLevel, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -140,7 +168,8 @@ export default function SectorsPage() {
         code: '', 
         sectorType: 'SOCIAL', 
         description: '', 
-        active: true 
+        active: true,
+        expatriateRegionId: ''
       });
       setShowCreateForm(false);
       setEditingSector(null);
@@ -160,7 +189,8 @@ export default function SectorsPage() {
       code: sector.code || '',
       sectorType: sector.sectorType,
       description: sector.description || '',
-      active: sector.active
+      active: sector.active,
+      expatriateRegionId: (sector as any).expatriateRegionId || ''
     });
     setShowCreateForm(true);
   };
@@ -255,13 +285,14 @@ export default function SectorsPage() {
           onClick={() => {
             setShowCreateForm(!showCreateForm);
             setEditingSector(null);
-            setFormData({ 
-              name: '', 
-              code: '', 
-              sectorType: 'SOCIAL', 
-              description: '', 
-              active: true 
-            });
+                  setFormData({ 
+                    name: '', 
+                    code: '', 
+                    sectorType: 'SOCIAL', 
+                    description: '', 
+                    active: true,
+                    expatriateRegionId: ''
+                  });
           }}
           className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
         >
@@ -276,6 +307,29 @@ export default function SectorsPage() {
             {editingSector ? 'تعديل القطاع' : `إضافة قطاع جديد - ${levelLabels[selectedLevel]}`}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Expatriate Region selector - only for national level */}
+            {selectedLevel === 'national' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">إقليم المغتربين *</label>
+                <select
+                  value={formData.expatriateRegionId}
+                  onChange={(e) => setFormData({ ...formData, expatriateRegionId: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">اختر إقليم المغتربين</option>
+                  {expatriateRegions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  القطاعات القومية يجب أن تكون مرتبطة بإقليم مغتربين
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">الاسم *</label>
               <input
@@ -352,7 +406,8 @@ export default function SectorsPage() {
                     code: '', 
                     sectorType: 'SOCIAL', 
                     description: '', 
-                    active: true 
+                    active: true,
+                    expatriateRegionId: ''
                   });
                 }}
                 className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
