@@ -90,13 +90,15 @@ export const apiClient = {
       });
       return handleResponse(response);
     },
-    getAllUsers: async (token: string) => {
-      const response = await fetch(`${apiUrl}/users`, {
+    getAllUsers: async (token: string, page: number = 1, limit: number = 1000) => {
+      const response = await fetch(`${apiUrl}/users?page=${page}&limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      return handleResponse(response);
+      const data = await handleResponse(response);
+      // Return just the users array if the backend returns paginated data
+      return data.users || data;
     },
     getUserById: async (token: string, userId: string) => {
       const response = await fetch(`${apiUrl}/users/${userId}`, {

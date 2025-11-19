@@ -104,6 +104,7 @@ export default function DashboardLayout({
     // Only show these pages to root admin
     ...(user?.level === "مدير النظام" ? [
       { name: "العضويات", path: "/dashboard/memberships" },
+      { name: "إدارة المستخدمين", path: "/dashboard/users" },
       { name: "الأرشيف", path: "/dashboard/archive" },
       // TODO: Implement backend support for these features
       // { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
