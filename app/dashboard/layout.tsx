@@ -105,10 +105,11 @@ export default function DashboardLayout({
     ...(user?.level === "مدير النظام" ? [
       { name: "العضويات", path: "/dashboard/memberships" },
       { name: "الأرشيف", path: "/dashboard/archive" },
-      { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
-      { name: "طلبات الحذف", path: "/dashboard/deletion-requests" }
+      // TODO: Implement backend support for these features
+      // { name: "لجنة التصويت", path: "/dashboard/voting-committee" },
+      // { name: "طلبات الحذف", path: "/dashboard/deletion-requests" },
+      // { name: "الإشعارات", path: "/dashboard/notifications" },
     ] : []),
-    { name: "الإشعارات", path: "/dashboard/notifications" },
   ];
 
   const toggleMobileMenu = () => {

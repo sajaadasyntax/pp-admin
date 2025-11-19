@@ -51,7 +51,6 @@ export const apiClient = {
   // Auth endpoints
   auth: {
     login: async (mobileNumber: string, password: string) => {
-      console.log('Making login request to:', `${apiUrl}/auth/login`);
       try {
         const response = await fetch(`${apiUrl}/auth/login`, {
           method: 'POST',
@@ -59,9 +58,7 @@ export const apiClient = {
           body: JSON.stringify({ mobileNumber, password }),
           credentials: 'include'
         });
-        console.log('Login response status:', response.status);
         const data = await response.json();
-        console.log('Login response data:', data);
         if (!response.ok) {
           throw new Error(data.error || data.message || 'حدث خطأ في الاتصال بالخادم');
         }
@@ -220,31 +217,7 @@ export const apiClient = {
     createBulletin: async (token: string, bulletinData: BulletinData, imageFile?: File) => {
       // CRITICAL: Make sure targetRegionId is always set
       if (!bulletinData.targetRegionId) {
-        console.error("MISSING targetRegionId in bulletinData:", bulletinData);
-        
-        // Get first region as fallback (this is a last resort)
-        try {
-          const regionsResponse = await fetch(`${apiUrl}/hierarchy-management/regions`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          
-          if (regionsResponse.ok) {
-            const regions = await regionsResponse.json();
-            if (regions && regions.length > 0) {
-              bulletinData.targetRegionId = regions[0].id;
-              console.log("Automatically added targetRegionId:", bulletinData.targetRegionId);
-            } else {
-              throw new Error("No regions found to use as targetRegionId");
-            }
-          } else {
-            throw new Error("Failed to fetch regions for targetRegionId");
-          }
-        } catch (error) {
-          console.error("Failed to get default region:", error);
-          throw new Error("targetRegionId is required for creating bulletins");
-        }
+        throw new Error("targetRegionId is required for creating bulletins. Please select a target region.");
       }
       
       // If no image file, use the standard JSON request
@@ -300,31 +273,7 @@ export const apiClient = {
     updateBulletin: async (token: string, bulletinId: string, bulletinData: BulletinData, imageFile?: File) => {
       // CRITICAL: Make sure targetRegionId is always set
       if (!bulletinData.targetRegionId) {
-        console.error("MISSING targetRegionId in bulletinData (update):", bulletinData);
-        
-        // Get first region as fallback (this is a last resort)
-        try {
-          const regionsResponse = await fetch(`${apiUrl}/hierarchy-management/regions`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          
-          if (regionsResponse.ok) {
-            const regions = await regionsResponse.json();
-            if (regions && regions.length > 0) {
-              bulletinData.targetRegionId = regions[0].id;
-              console.log("Automatically added targetRegionId for update:", bulletinData.targetRegionId);
-            } else {
-              throw new Error("No regions found to use as targetRegionId for update");
-            }
-          } else {
-            throw new Error("Failed to fetch regions for targetRegionId during update");
-          }
-        } catch (error) {
-          console.error("Failed to get default region for update:", error);
-          throw new Error("targetRegionId is required for updating bulletins");
-        }
+        throw new Error("targetRegionId is required for updating bulletins. Please select a target region.");
       }
       
       // If no image file, use the standard JSON request

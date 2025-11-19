@@ -42,7 +42,7 @@ interface AuthContextType {
   refreshToken: string | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (mobileNumber: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 

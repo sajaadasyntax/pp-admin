@@ -59,7 +59,7 @@ export default function SubscriptionsPage() {
       } finally {
         setLoading(false);
       }
-  }, [token, activeTab]);
+  }, [token, activeTab, user]);
 
   const fetchReceipts = useCallback(async () => {
     try {
@@ -80,7 +80,7 @@ export default function SubscriptionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, activeTab]);
 
 
   useEffect(() => {
