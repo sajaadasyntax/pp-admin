@@ -127,10 +127,21 @@ export default function ReportDetailsPage() {
 
       try {
         setLoading(true);
+        const authToken =
+          token ||
+          (typeof window !== "undefined"
+            ? localStorage.getItem("token") || sessionStorage.getItem("token")
+            : null);
+
+        if (!authToken) {
+          setError("يرجى تسجيل الدخول للوصول إلى التقارير");
+          setLoading(false);
+          return;
+        }
         
         try {
           // Fetch report details from API
-          const reportData = await apiClient.reports.getReportById(token, params.id as string);
+          const reportData = await apiClient.reports.getReportById(authToken, params.id as string);
           setReport(reportData);
         } catch (apiError) {
           console.error('Error with API call:', apiError);
