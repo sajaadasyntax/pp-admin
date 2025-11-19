@@ -71,17 +71,21 @@ export default function SectorsPage() {
 
   // Fetch sectors for selected level
   const fetchSectors = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       
       const response = await fetch(`${apiUrl}/sector-hierarchy/${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -106,8 +110,12 @@ export default function SectorsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       const url = editingSector 
         ? `${apiUrl}/sector-hierarchy/${endpoint}/${editingSector.id}`
@@ -117,7 +125,7 @@ export default function SectorsPage() {
         method: editingSector ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
@@ -158,16 +166,15 @@ export default function SectorsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا القطاع؟')) return;
+    if (!token || !window.confirm('هل أنت متأكد من حذف هذا القطاع؟')) return;
 
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       const response = await fetch(`${apiUrl}/sector-hierarchy/${endpoint}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 

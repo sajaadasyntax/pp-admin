@@ -127,24 +127,10 @@ export default function ReportDetailsPage() {
 
       try {
         setLoading(true);
-        console.log('Fetching report details...');
-        
-        // Use cookie token as fallback if context token is not available
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
         
         try {
           // Fetch report details from API
-          const reportData = await apiClient.reports.getReportById(effectiveToken, params.id as string);
-          console.log('Report details fetched:', reportData);
+          const reportData = await apiClient.reports.getReportById(token, params.id as string);
           setReport(reportData);
         } catch (apiError) {
           console.error('Error with API call:', apiError);
@@ -187,21 +173,15 @@ export default function ReportDetailsPage() {
     try {
       setStatusUpdateLoading(true);
       
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
-      
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
+      if (!token) {
+        alert('يرجى تسجيل الدخول أولاً');
+        setStatusUpdateLoading(false);
+        return;
       }
       
       try {
         // Call API to update report status
-        await apiClient.reports.updateReportStatus(effectiveToken, report.id, newStatus);
+        await apiClient.reports.updateReportStatus(token, report.id, newStatus);
         
         // Update local state
         setReport({
@@ -240,22 +220,15 @@ export default function ReportDetailsPage() {
       return;
     }
     
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
     try {
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
-      
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
       try {
         // Call API to delete report
-        await apiClient.reports.deleteReport(effectiveToken, report.id);
+        await apiClient.reports.deleteReport(token, report.id);
         
         // Show success message
         alert('تم حذف التقرير بنجاح');

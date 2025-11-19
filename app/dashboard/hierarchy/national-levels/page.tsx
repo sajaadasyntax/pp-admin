@@ -35,12 +35,16 @@ export default function NationalLevelsPage() {
   const canManage = !!user && (user.adminLevel === 'ADMIN' || user.adminLevel === 'GENERAL_SECRETARIAT' || user.role === 'ADMIN' || user.role === 'GENERAL_SECRETARIAT');
 
   const fetchLevels = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/hierarchy/national-levels`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -96,9 +100,16 @@ export default function NationalLevelsPage() {
       active: !!formData.active
     };
 
+    if (!token) {
+      setStatusMessage({
+        type: 'error',
+        text: 'يرجى تسجيل الدخول أولاً'
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const url = editing 
         ? `${apiUrl}/hierarchy/national-levels/${editing.id}`
         : `${apiUrl}/hierarchy/national-levels`;
@@ -107,7 +118,7 @@ export default function NationalLevelsPage() {
         method: editing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -165,8 +176,9 @@ export default function NationalLevelsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
-    if (!canManage) {
+    if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
+    
+    if (!canManage || !token) {
       setStatusMessage({
         type: 'error',
         text: 'لا تملك صلاحية لحذف المستوى القومي'
@@ -176,12 +188,11 @@ export default function NationalLevelsPage() {
 
     setSubmitting(true);
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       await fetch(`${apiUrl}/hierarchy/national-levels/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
       setStatusMessage({

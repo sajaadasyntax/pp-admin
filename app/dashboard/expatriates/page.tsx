@@ -24,12 +24,16 @@ export default function ExpatriatesPage() {
 
   useEffect(() => {
     const fetchRegions = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
         const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
           headers: {
             'Content-Type': 'application/json',
-            ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+            'Authorization': `Bearer ${token}`,
           },
         });
 

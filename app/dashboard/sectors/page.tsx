@@ -84,12 +84,13 @@ export default function SectorsPage() {
   });
 
   const fetchExpatriateRegions = async () => {
+    if (!token) return;
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -103,9 +104,13 @@ export default function SectorsPage() {
   };
 
   const fetchSectors = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       
       let url = `${apiUrl}/sector-hierarchy/${endpoint}`;
@@ -120,7 +125,7 @@ export default function SectorsPage() {
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -147,8 +152,13 @@ export default function SectorsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       const url = editing 
         ? `${apiUrl}/sector-hierarchy/${endpoint}/${editing.id}`
@@ -170,7 +180,7 @@ export default function SectorsPage() {
         method: editing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -200,15 +210,15 @@ export default function SectorsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
+    if (!token || !window.confirm('هل أنت متأكد من الحذف؟')) return;
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const endpoint = levelEndpoints[selectedLevel];
       await fetch(`${apiUrl}/sector-hierarchy/${endpoint}/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
       fetchSectors();

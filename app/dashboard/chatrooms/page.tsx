@@ -44,56 +44,58 @@ export default function ChatRoomsPage() {
   }, [token]);
 
   const fetchChatRooms = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch chat rooms');
+        throw new Error('فشل تحميل غرف المحادثة');
       }
 
       const data = await response.json();
       setChatRooms(data);
     } catch (err: any) {
       console.error('Error fetching chat rooms:', err);
-      setError(err.message || 'Failed to load chat rooms');
+      setError(err.message || 'فشل تحميل غرف المحادثة');
     } finally {
       setLoading(false);
     }
   };
 
   const deleteChatRoom = async (roomId: string) => {
-    if (!confirm('Are you sure you want to delete this chat room?')) {
+    if (!token || !window.confirm('هل أنت متأكد من حذف غرفة المحادثة؟')) {
       return;
     }
 
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms/${roomId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete chat room');
+        throw new Error('فشل حذف غرفة المحادثة');
       }
 
-      // Refresh the list
       fetchChatRooms();
     } catch (err: any) {
       console.error('Error deleting chat room:', err);
-      alert(err.message || 'Failed to delete chat room');
+      alert(err.message || 'فشل حذف غرفة المحادثة');
     }
   };
 

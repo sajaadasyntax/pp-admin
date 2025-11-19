@@ -91,24 +91,10 @@ export default function MemberDetailsPage() {
 
       try {
         setLoading(true);
-        console.log('Fetching member details...');
-        
-        // Use cookie token as fallback if context token is not available
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
         
         try {
           // Fetch member details from API
-          const memberData = await apiClient.memberships.getMemberDetails(effectiveToken, params.id as string);
-          console.log('Member details fetched:', memberData);
+          const memberData = await apiClient.memberships.getMemberDetails(token, params.id as string);
           setMember(memberData);
         } catch (apiError) {
           console.error('Error fetching member details:', apiError);

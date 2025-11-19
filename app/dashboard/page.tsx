@@ -33,7 +33,10 @@ export default function Dashboard() {
 
   // Fetch dashboard data
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     
     const fetchDashboardData = async () => {
       setLoading(true);
@@ -46,13 +49,12 @@ export default function Dashboard() {
         ]);
         
         // Update stats with real data
-        const updatedStats = [...stats];
-        updatedStats[0].value = 0; // Reports count - TODO: fetch from API
-        updatedStats[1].value = membershipsData?.length || 0; // Active memberships
-        updatedStats[2].value = 0; // Active subscriptions - TODO: fetch from API
-        updatedStats[3].value = 0; // Active votings - TODO: fetch from API
-        
-        setStats(updatedStats);
+        setStats([
+          { title: "إجمالي التقارير", value: 0, bgColor: "bg-[var(--primary-500)]" }, // TODO: fetch from API
+          { title: "العضويات النشطة", value: membershipsData?.length || 0, bgColor: "bg-[var(--success-500)]" },
+          { title: "الاشتراكات النشطة", value: 0, bgColor: "bg-[var(--accent-500)]" }, // TODO: fetch from API
+          { title: "التصويتات النشطة", value: 0, bgColor: "bg-[var(--error-500)]" }, // TODO: fetch from API
+        ]);
         
         // TODO: Fetch recent activities from API when endpoint is available
         setRecentActivities([]);

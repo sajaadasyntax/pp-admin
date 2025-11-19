@@ -20,44 +20,19 @@ export default function ReportsPage() {
   // Get real reports data from API
   useEffect(() => {
     const fetchReports = async () => {
-      // Use fallback to cookie if token is not in context
       if (!token) {
-        console.log('No token in context, checking cookies...');
-        const cookieToken = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1];
-          
-        if (!cookieToken) {
-          console.log('No token available in cookies either, cannot fetch reports');
-          setLoading(false);
-          return;
-        }
+        setLoading(false);
+        return;
       }
 
       try {
         setLoading(true);
-        console.log('Fetching reports...');
-        
-        // Use cookie token as fallback if context token is not available
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
         
         // Fetch reports from API
         const statusFilter = filter !== 'all' ? filter : undefined;
         
         try {
-          // First try the correct endpoint
-          const reportsData = await apiClient.reports.getAllReports(effectiveToken, statusFilter);
-          console.log('Reports fetched:', reportsData);
+          const reportsData = await apiClient.reports.getAllReports(token, statusFilter);
           
           // Filter reports based on user level
           const filteredReports = reportsData.filter(
@@ -104,42 +79,19 @@ export default function ReportsPage() {
 
   // Handle report deletion
   const handleDeleteReport = async (id: string) => {
-    if (canDeleteDirectly) {
-      try {
-        // Use token from context or cookies
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
-        
-        try {
-          // Call API to delete report
-          await apiClient.reports.deleteReport(effectiveToken, id);
-          
-          // Update local state
-          setReports((prevReports) => prevReports.filter((report) => report.id !== id));
-          
-          // Show success message
-          alert('تم حذف التقرير بنجاح');
-        } catch (apiError) {
-          console.error('API error deleting report:', apiError);
-          
-          // For demo purposes, still update the UI even if API fails
-          console.log('Removing report from UI despite API error (demo mode)');
-          setReports((prevReports) => prevReports.filter((report) => report.id !== id));
-          
-          alert('تم حذف التقرير من الواجهة (وضع العرض التوضيحي)');
-        }
-      } catch (error) {
-        console.error('Error in delete process:', error);
-        alert('حدث خطأ أثناء حذف التقرير');
-      }
+    if (!canDeleteDirectly || !token) return;
+
+    if (!window.confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
+      return;
+    }
+      
+    try {
+      await apiClient.reports.deleteReport(token, id);
+      setReports((prevReports) => prevReports.filter((report) => report.id !== id));
+      alert('تم حذف التقرير بنجاح');
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      alert('حدث خطأ أثناء حذف التقرير');
     }
   };
 
@@ -151,23 +103,15 @@ export default function ReportsPage() {
 
   // Submit delete request
   const handleSubmitDeleteRequest = async () => {
-    if (!selectedReport || !deleteReason) return;
+    if (!selectedReport || !deleteReason || !token) return;
     
     try {
-      // Use token from context or cookies
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
+      // TODO: Implement API call when deletion request endpoint is available
+      // await apiClient.reports.createDeletionRequest(token, {
+      //   reportId: selectedReport.id,
+      //   reason: deleteReason
+      // });
       
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
-      // In a real app with a deletion request API, we would call it here
-      // For now, we'll just log the request and show a success message
       console.log("Delete request submitted:", {
         reportId: selectedReport.id,
         reportTitle: selectedReport.title,
@@ -175,12 +119,6 @@ export default function ReportsPage() {
         requestedBy: user?.email,
         requestedByLevel: user?.level
       });
-      
-      // TODO: Implement API call when deletion request endpoint is available
-      // await apiClient.reports.createDeletionRequest(effectiveToken, {
-      //   reportId: selectedReport.id,
-      //   reason: deleteReason
-      // });
       
       setDeleteRequestSuccess(true);
       setTimeout(() => {

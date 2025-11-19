@@ -43,19 +43,23 @@ export default function NewChatRoomPage() {
   }, [token]);
 
   const fetchUsers = async () => {
+    if (!token) {
+      setUsersLoading(false);
+      return;
+    }
+
     try {
       setUsersLoading(true);
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
       const response = await fetch(`${apiUrl}/hierarchical-users`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        throw new Error('فشل تحميل المستخدمين');
       }
 
       const data = await response.json();
@@ -64,7 +68,7 @@ export default function NewChatRoomPage() {
       setUsers(regularUsers);
     } catch (err: any) {
       console.error('Error fetching users:', err);
-      setError(err.message || 'Failed to load users');
+      setError(err.message || 'فشل تحميل المستخدمين');
     } finally {
       setUsersLoading(false);
     }
@@ -72,6 +76,11 @@ export default function NewChatRoomPage() {
 
   const handleCreateChatRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
 
     if (!title.trim()) {
       alert('الرجاء إدخال اسم الغرفة');
@@ -87,11 +96,10 @@ export default function NewChatRoomPage() {
       setLoading(true);
       setError(null);
 
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -102,14 +110,13 @@ export default function NewChatRoomPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create chat room');
+        throw new Error(errorData.error || 'فشل إنشاء غرفة المحادثة');
       }
 
-      // Success - redirect to chat rooms list
       router.push('/dashboard/chatrooms');
     } catch (err: any) {
       console.error('Error creating chat room:', err);
-      setError(err.message || 'Failed to create chat room');
+      setError(err.message || 'فشل إنشاء غرفة المحادثة');
     } finally {
       setLoading(false);
     }

@@ -31,12 +31,16 @@ export default function ExpatriateRegionsPage() {
   });
 
   const fetchRegions = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -57,8 +61,13 @@ export default function ExpatriateRegionsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const url = editing 
         ? `${apiUrl}/expatriate-hierarchy/expatriate-regions/${editing.id}`
         : `${apiUrl}/expatriate-hierarchy/expatriate-regions`;
@@ -67,7 +76,7 @@ export default function ExpatriateRegionsPage() {
         method: editing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
@@ -95,14 +104,14 @@ export default function ExpatriateRegionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من الحذف؟')) return;
+    if (!token || !window.confirm('هل أنت متأكد من الحذف؟')) return;
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
       fetchRegions();

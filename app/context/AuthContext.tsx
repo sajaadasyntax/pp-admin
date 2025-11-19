@@ -134,52 +134,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (mobileNumber: string, password: string) => {
-    console.log("AuthContext: Starting login process");
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log("AuthContext: Making API request");
       const response = await apiClient.auth.login(mobileNumber, password);
-      console.log("AuthContext: API response received", response);
       const { token: authToken, refreshToken: newRefreshToken, user: userData } = response;
       
       // Make sure it's an admin account
       if (userData.role !== "ADMIN") {
-        console.log("AuthContext: Non-admin user attempted login");
         throw new Error("غير مصرح لك بالدخول إلى لوحة التحكم");
       }
       
-      console.log("AuthContext: Storing tokens");
       // Store tokens in cookies
       Cookies.set("token", authToken, { expires: 1 }); // 1 day
       Cookies.set("refreshToken", newRefreshToken, { expires: 7 }); // 7 days
       
-      console.log("AuthContext: Updating state");
-      // Then update state in the correct order
+      // Then update state
       setToken(authToken);
       setRefreshToken(newRefreshToken);
-        setUser({
-          id: userData.id,
-          name: userData.name || userData.email,
-          email: userData.email,
-          level: mapRoleToLevel(userData),
-          role: userData.role,
-          adminLevel: userData.adminLevel,
-          regionId: userData.regionId,
-          localityId: userData.localityId,
-          adminUnitId: userData.adminUnitId,
-          districtId: userData.districtId,
-          region: userData.region,
-          locality: userData.locality,
-          adminUnit: userData.adminUnit,
-          district: userData.district
-        });
+      setUser({
+        id: userData.id,
+        name: userData.name || userData.email,
+        email: userData.email,
+        level: mapRoleToLevel(userData),
+        role: userData.role,
+        adminLevel: userData.adminLevel,
+        regionId: userData.regionId,
+        localityId: userData.localityId,
+        adminUnitId: userData.adminUnitId,
+        districtId: userData.districtId,
+        region: userData.region,
+        locality: userData.locality,
+        adminUnit: userData.adminUnit,
+        district: userData.district
+      });
       
-      console.log("AuthContext: Login successful");
-      return true; // Indicate successful login
+      return true;
     } catch (err) {
-      console.error("AuthContext: Login error", err);
       const errorMessage = err instanceof Error ? err.message : "حدث خطأ أثناء تسجيل الدخول";
       setError(errorMessage);
       // Clear any partial state
@@ -190,7 +182,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Cookies.remove("refreshToken");
       throw new Error(errorMessage);
     } finally {
-      console.log("AuthContext: Finishing login process");
       setIsLoading(false);
     }
   };

@@ -45,47 +45,52 @@ export default function ChatRoomManagementPage() {
   }, [roomId, token]);
 
   const fetchChatRoom = async () => {
+    if (!token) return;
+
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch chat room');
+        throw new Error('فشل تحميل غرفة المحادثة');
       }
 
       const rooms = await response.json();
       const room = rooms.find((r: ChatRoom) => r.id === roomId);
       
       if (!room) {
-        throw new Error('Chat room not found');
+        throw new Error('غرفة المحادثة غير موجودة');
       }
 
       setChatRoom(room);
     } catch (err: any) {
       console.error('Error fetching chat room:', err);
-      setError(err.message || 'Failed to load chat room');
+      setError(err.message || 'فشل تحميل غرفة المحادثة');
     }
   };
 
   const fetchUsers = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
       const response = await fetch(`${apiUrl}/hierarchical-users`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        throw new Error('فشل تحميل المستخدمين');
       }
 
       const data = await response.json();
@@ -99,59 +104,57 @@ export default function ChatRoomManagementPage() {
   };
 
   const addParticipant = async (userId: string) => {
+    if (!token) return;
+
     try {
       setActionLoading(true);
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms/${roomId}/participants`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ userId })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add participant');
+        throw new Error('فشل إضافة المشارك');
       }
 
-      // Refresh the room data
       await fetchChatRoom();
     } catch (err: any) {
       console.error('Error adding participant:', err);
-      alert(err.message || 'Failed to add participant');
+      alert(err.message || 'فشل إضافة المشارك');
     } finally {
       setActionLoading(false);
     }
   };
 
   const removeParticipant = async (userId: string) => {
-    if (!confirm('هل أنت متأكد من إزالة هذا المشترك؟')) {
+    if (!token || !window.confirm('هل أنت متأكد من إزالة هذا المشترك؟')) {
       return;
     }
 
     try {
       setActionLoading(true);
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
       const response = await fetch(`${apiUrl}/chat/admin/chatrooms/${roomId}/participants/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to remove participant');
+        throw new Error('فشل إزالة المشارك');
       }
 
-      // Refresh the room data
       await fetchChatRoom();
     } catch (err: any) {
       console.error('Error removing participant:', err);
-      alert(err.message || 'Failed to remove participant');
+      alert(err.message || 'فشل إزالة المشارك');
     } finally {
       setActionLoading(false);
     }

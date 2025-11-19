@@ -37,16 +37,19 @@ export default function ExpatriateRegionsPage() {
 
   // Fetch expatriate regions
   const fetchExpatriateRegions = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       
       const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -71,8 +74,12 @@ export default function ExpatriateRegionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!token) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const url = editingRegion 
         ? `${apiUrl}/expatriate-hierarchy/expatriate-regions/${editingRegion.id}`
         : `${apiUrl}/expatriate-hierarchy/expatriate-regions`;
@@ -81,7 +88,7 @@ export default function ExpatriateRegionsPage() {
         method: editingRegion ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
@@ -115,15 +122,14 @@ export default function ExpatriateRegionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا القطاع؟')) return;
+    if (!token || !window.confirm('هل أنت متأكد من حذف هذا القطاع؟')) return;
 
     try {
-      const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
       const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          'Authorization': `Bearer ${token}`,
         },
       });
 

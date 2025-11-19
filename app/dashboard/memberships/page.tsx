@@ -155,38 +155,19 @@ export default function MembershipsPage() {
   // Get real memberships data from API
   useEffect(() => {
     const fetchMemberships = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        console.log('Fetching memberships...');
-        
-        // Use cookie token as fallback if context token is not available
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
-        
-        try {
-          // Fetch memberships from API with filter if not "all"
-          const statusFilter = filter !== 'all' ? filter : undefined;
-          const membershipsData = await apiClient.memberships.getAllMemberships(effectiveToken, statusFilter);
-          console.log('Memberships fetched:', membershipsData);
-          
-          // Backend already handles hierarchical access control, so use data directly
-          setMemberships(membershipsData);
-        } catch (apiError) {
-          console.error('Error with API call:', apiError);
-          setError('فشل في تحميل بيانات العضويات. يرجى المحاولة مرة أخرى.');
-          setMemberships([]);
-        }
+        const statusFilter = filter !== 'all' ? filter : undefined;
+        const membershipsData = await apiClient.memberships.getAllMemberships(token, statusFilter);
+        setMemberships(membershipsData);
       } catch (error) {
-        console.error('Error in memberships fetching process:', error);
-        // If everything fails, use empty array
+        console.error('Error fetching memberships:', error);
+        setError('فشل في تحميل بيانات العضويات. يرجى المحاولة مرة أخرى.');
         setMemberships([]);
       } finally {
         setLoading(false);
@@ -194,7 +175,7 @@ export default function MembershipsPage() {
     };
 
     fetchMemberships();
-  }, [user, filter, token]);
+  }, [filter, token]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -220,6 +201,11 @@ export default function MembershipsPage() {
     // Validate hierarchy selection
     if (!hierarchySelection) {
       setFormError("يرجى اختيار التسلسل الإداري للعضو");
+      return;
+    }
+
+    if (!token) {
+      setFormError('يرجى تسجيل الدخول أولاً');
       return;
     }
 
@@ -280,21 +266,8 @@ export default function MembershipsPage() {
           professionalMembership: formData.professionalMembership
         }
       };
-
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
       
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
-      // Make API call using our API client
-      const newMember = await apiClient.memberships.createMember(effectiveToken, memberData);
+      const newMember = await apiClient.memberships.createMember(token, memberData);
       
       // Add new member to the list
       setMemberships(prev => [...prev, {
@@ -370,64 +343,24 @@ export default function MembershipsPage() {
 
   // Toggle membership status handler
   const handleToggleStatus = async (id: string) => {
+    if (!token) return;
+
     try {
-      // Get current membership
       const membership = memberships.find(m => m.id === id);
       if (!membership) return;
       
-      // Determine new status
       const newStatus = membership.status === "active" ? "disabled" : "active";
       
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
+      await apiClient.memberships.updateMembershipStatus(token, id, newStatus);
       
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
-      try {
-        // Call API to update status
-        await apiClient.memberships.updateMembershipStatus(effectiveToken, id, newStatus);
-        
-        // Update local state
-        setMemberships((prevMemberships) =>
-          prevMemberships.map((membership) => {
-            if (membership.id === id) {
-              return {
-                ...membership,
-                status: newStatus,
-              };
-            }
-            return membership;
-          })
-        );
-        
-        // Show success message
-        console.log(`Membership status updated to ${newStatus}`);
-      } catch (apiError) {
-        console.error('API error updating membership status:', apiError);
-        
-        // For demo purposes, still update the UI even if API fails
-        console.log('Updating status in UI despite API error (demo mode)');
-        setMemberships((prevMemberships) =>
-          prevMemberships.map((membership) => {
-            if (membership.id === id) {
-              return {
-                ...membership,
-                status: newStatus,
-              };
-            }
-            return membership;
-          })
-        );
-      }
+      setMemberships((prevMemberships) =>
+        prevMemberships.map((m) =>
+          m.id === id ? { ...m, status: newStatus } : m
+        )
+      );
     } catch (error) {
       console.error('Error toggling membership status:', error);
+      alert('حدث خطأ أثناء تحديث حالة العضوية');
     }
   };
   
@@ -441,9 +374,8 @@ export default function MembershipsPage() {
   
   // Handle password reset
   const handlePasswordReset = async () => {
-    if (!selectedUserId) return;
+    if (!selectedUserId || !token) return;
     
-    // Validate password
     if (!newPassword) {
       setPasswordError('كلمة المرور مطلوبة');
       return;
@@ -458,32 +390,9 @@ export default function MembershipsPage() {
     setPasswordError(null);
     
     try {
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
-      
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
-      try {
-        // Call API to reset password
-        await apiClient.memberships.resetPassword(effectiveToken, selectedUserId, newPassword);
-        
-        // Show success message
-        alert('تم إعادة تعيين كلمة المرور بنجاح');
-        
-        // Close modal
-        setShowPasswordModal(false);
-        console.log('Password reset successfully');
-      } catch (apiError) {
-        console.error('API error resetting password:', apiError);
-        setPasswordError('حدث خطأ أثناء إعادة تعيين كلمة المرور');
-      }
+      await apiClient.memberships.resetPassword(token, selectedUserId, newPassword);
+      alert('تم إعادة تعيين كلمة المرور بنجاح');
+      setShowPasswordModal(false);
     } catch (error) {
       console.error('Error resetting password:', error);
       setPasswordError('حدث خطأ أثناء إعادة تعيين كلمة المرور');
@@ -1113,43 +1022,17 @@ export default function MembershipsPage() {
                       </button>
                       <button 
                         onClick={async () => {
-                          if (window.confirm('هل أنت متأكد من حذف هذا العضو؟')) {
-                            try {
-                              // Use cookie token as fallback if context token is not available
-                              const cookieToken = !token ? document.cookie
-                                .split('; ')
-                                .find(row => row.startsWith('token='))
-                                ?.split('=')[1] : null;
-                                
-                              const effectiveToken = token || cookieToken;
-                              
-                              if (!effectiveToken) {
-                                throw new Error('No authentication token available');
-                              }
-                              
-                              try {
-                                // Call API to delete membership
-                                await apiClient.memberships.deleteMembership(effectiveToken, membership.id);
-                                
-                                // Update local state
-                                setMemberships((prevMemberships) => 
-                                  prevMemberships.filter((m) => m.id !== membership.id)
-                                );
-                                
-                                // Show success message
-                                console.log('Membership deleted successfully');
-                              } catch (apiError) {
-                                console.error('API error deleting membership:', apiError);
-                                
-                                // For demo purposes, still update the UI even if API fails
-                                console.log('Removing from UI despite API error (demo mode)');
-                                setMemberships((prevMemberships) => 
-                                  prevMemberships.filter((m) => m.id !== membership.id)
-                                );
-                              }
-                            } catch (error) {
-                              console.error('Error deleting membership:', error);
-                            }
+                          if (!token || !window.confirm('هل أنت متأكد من حذف هذا العضو؟')) {
+                            return;
+                          }
+
+                          try {
+                            await apiClient.memberships.deleteMembership(token, membership.id);
+                            setMemberships((prev) => prev.filter((m) => m.id !== membership.id));
+                            alert('تم حذف العضو بنجاح');
+                          } catch (error) {
+                            console.error('Error deleting membership:', error);
+                            alert('حدث خطأ أثناء حذف العضو');
                           }
                         }}
                         className="app-button-danger text-sm">حذف</button>

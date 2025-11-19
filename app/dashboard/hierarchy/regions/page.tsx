@@ -30,12 +30,13 @@ export default function RegionsPage() {
   });
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
-    const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) throw new Error('No authentication token');
+    
     const response = await fetch(`${apiUrl}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        'Authorization': `Bearer ${token}`,
         ...options.headers,
       },
     });

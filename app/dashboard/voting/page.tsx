@@ -38,41 +38,14 @@ export default function VotingPage() {
   // Get real votings data from API
   useEffect(() => {
     const fetchVotingItems = async () => {
-      // Use fallback to cookie if token is not in context
       if (!token) {
-        console.log('No token in context, checking cookies...');
-        const cookieToken = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1];
-          
-        if (!cookieToken) {
-          console.log('No token available in cookies either, cannot fetch voting items');
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Found token in cookies, proceeding with fetch');
+        setLoading(false);
+        return;
       }
 
       try {
         setLoading(true);
-        console.log('Fetching voting items...');
-        
-        // Use cookie token as fallback if context token is not available
-        const cookieToken = !token ? document.cookie
-          .split('; ')
-          .find(row => row.startsWith('token='))
-          ?.split('=')[1] : null;
-          
-        const effectiveToken = token || cookieToken;
-        
-        if (!effectiveToken) {
-          throw new Error('No authentication token available');
-        }
-        
-        const votingData = await apiClient.voting.getAllVotingItems(effectiveToken);
-        console.log('Voting items fetched:', votingData);
+        const votingData = await apiClient.voting.getAllVotingItems(token);
 
         if (Array.isArray(votingData)) {
           // Filter votings based on user level
@@ -111,7 +84,7 @@ export default function VotingPage() {
     };
 
     fetchVotingItems();
-  }, [user]);
+  }, [token, user]);
 
   // Add a new option to the new voting form
   const addOption = () => {
@@ -206,23 +179,7 @@ export default function VotingPage() {
     try {
       setLoading(true);
       
-      // Submit to API
-      console.log('Creating new voting:', votingData);
-      
-      // Use cookie token as fallback if context token is not available
-      const cookieToken = !token ? document.cookie
-        .split('; ')
-        .find(row => row.startsWith('token='))
-        ?.split('=')[1] : null;
-        
-      const effectiveToken = token || cookieToken;
-      
-      if (!effectiveToken) {
-        throw new Error('No authentication token available');
-      }
-      
-      const createdVoting = await apiClient.voting.createVotingItem(effectiveToken, votingData);
-      console.log('Voting created successfully:', createdVoting);
+      const createdVoting = await apiClient.voting.createVotingItem(token, votingData);
       
       // Add to local state
       const newVoting: Voting = {

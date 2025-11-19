@@ -21,12 +21,16 @@ export default function HierarchyPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token');
         const response = await fetch(`${apiUrl}/hierarchical-users/stats`, {
           headers: {
             'Content-Type': 'application/json',
-            ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+            'Authorization': `Bearer ${token}`,
           },
         });
 
