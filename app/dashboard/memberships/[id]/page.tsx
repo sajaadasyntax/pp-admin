@@ -89,6 +89,12 @@ export default function MemberDetailsPage() {
         return;
       }
 
+      if (!token) {
+        setError("Authentication token is missing");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         
