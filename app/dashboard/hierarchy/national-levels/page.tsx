@@ -46,7 +46,7 @@ export default function NationalLevelsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setLevels(data.data || []);
+        setLevels(Array.isArray(data) ? data : data?.data || []);
       } else {
         setStatusMessage({
           type: 'error',
