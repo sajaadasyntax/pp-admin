@@ -23,16 +23,18 @@ The page automatically respects the hierarchical structure:
 ### 3. **Search and Filtering**
 Multiple filtering options are available:
 - **Search Bar**: Filter by name, email, or mobile number
-- **Admin Level Filter**: Filter users by their administrative level
+- **Admin Permission Level Filter**: Filter users by their permission/role level (not the same as geographic hierarchy)
   - All levels
-  - General Secretariat (الأمانة العامة)
-  - National Level (المستوى الوطني)
-  - Region (الولاية)
-  - Locality (المحلية)
-  - Admin Unit (الوحدة الإدارية)
-  - District (الحي)
-  - Expatriate General (عام المغتربين)
-  - Expatriate Region (إقليم المغتربين)
+  - **General Secretariat (الأمانة العامة)** - Highest admin permission level
+  - National Level (المستوى الوطني) - Admin for national level entities
+  - Region (الولاية) - Admin for a region
+  - Locality (المحلية) - Admin for a locality
+  - Admin Unit (الوحدة الإدارية) - Admin for an admin unit
+  - District (الحي) - Admin for a district
+  - Expatriate General (عام المغتربين) - Admin for expatriate general level
+  - Expatriate Region (إقليم المغتربين) - Admin for an expatriate region
+
+**Important Note**: These are **admin permission levels** (who can manage what), not the **geographic hierarchy levels** (the organizational structure). The system has 5 geographic hierarchy levels with their own management pages, but admin permission levels include the additional "General Secretariat" level which has the highest permissions across all geographic levels.
 
 ### 4. **User Information Display**
 Each user entry shows:
@@ -141,6 +143,28 @@ Potential improvements for future versions:
 - Pagination for large user lists (currently loads all users)
 - User import from CSV/Excel
 - Custom admin level assignment
+
+## Understanding the Distinction
+
+### Geographic Hierarchy Levels (5 levels - have their own management pages)
+These are the organizational structure of locations:
+1. **National Level** (المستوى القومي) - Managed at `/dashboard/hierarchy/national-levels`
+2. **Region** (الولاية) - Managed at `/dashboard/hierarchy/regions`
+3. **Locality** (المحلية) - Managed at `/dashboard/hierarchy/localities`
+4. **Admin Unit** (الوحدة الإدارية) - Managed at `/dashboard/hierarchy/admin-units`
+5. **District** (الحي) - Managed at `/dashboard/hierarchy/districts`
+
+### Admin Permission Levels (what this page filters by)
+These are the permission/role levels that determine who can manage what:
+1. **General Secretariat** - Highest permission, can manage everything
+2. **National Level Admin** - Can manage national level entities and below
+3. **Region Admin** - Can manage a specific region and its sub-levels
+4. **Locality Admin** - Can manage a specific locality and its sub-levels
+5. **Admin Unit Admin** - Can manage a specific admin unit and its districts
+6. **District Admin** - Can manage a specific district only
+7. **Expatriate levels** - Similar structure for expatriate hierarchy
+
+The filter dropdown on this page shows **admin permission levels**, not the geographic hierarchy itself.
 
 ## Related Components
 

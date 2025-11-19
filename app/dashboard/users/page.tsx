@@ -52,7 +52,10 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAdminLevel, setSelectedAdminLevel] = useState<string>("all");
 
-  // Admin level filters based on hierarchy
+  // Admin permission level filters
+  // Note: These are admin PERMISSION levels (who can manage what), 
+  // not the 5 geographic hierarchy levels (organizational structure)
+  // GENERAL_SECRETARIAT is the highest permission level above all geographic levels
   const adminLevelFilters: AdminLevelFilter[] = [
     { value: "all", label: "الكل" },
     { value: "GENERAL_SECRETARIAT", label: "الأمانة العامة" },
