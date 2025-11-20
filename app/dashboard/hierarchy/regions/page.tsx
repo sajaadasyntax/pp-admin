@@ -122,7 +122,7 @@ export default function RegionsPage() {
       }
       setShowForm(false);
       setEditing(null);
-      setFormData({ name: '', code: '', description: '' });
+      setFormData({ name: '', code: '', description: '', nationalLevelId: '' });
       fetchRegions();
     } catch (error) {
       alert('فشل في حفظ البيانات');
