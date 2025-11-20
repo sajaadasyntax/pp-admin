@@ -202,6 +202,27 @@ export default function DistrictsPage() {
     }
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الحي "${name}"؟ سيتم إرسال طلب الحذف للأمين العام للموافقة.`)) {
+      return;
+    }
+
+    try {
+      await apiCall('/deletion-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'DISTRICT',
+          entityId: id,
+          entityName: name,
+          reason: 'طلب حذف من المسؤول'
+        }),
+      });
+      alert('تم إرسال طلب الحذف بنجاح. سيتم مراجعته من قبل الأمين العام.');
+    } catch (error) {
+      alert('فشل في إرسال طلب الحذف');
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -421,6 +442,12 @@ export default function DistrictsPage() {
                   className="flex-1 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 text-sm font-medium"
                 >
                   تعديل
+                </button>
+                <button
+                  onClick={() => handleDelete(district.id, district.name)}
+                  className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  حذف
                 </button>
               </div>
             </div>

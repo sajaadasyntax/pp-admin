@@ -95,7 +95,8 @@ export interface Notification {
 // Deletion Request type
 export interface DeletionRequest {
   id: string;
-  requestType: "user" | "report" | "voting";
+  requestType: "user" | "report" | "voting" | "hierarchy";
+  entityType?: "REGION" | "LOCALITY" | "ADMIN_UNIT" | "DISTRICT";
   itemId: string;
   itemName: string;
   requestReason: string;
@@ -107,6 +108,10 @@ export interface DeletionRequest {
   };
   status: "pending" | "approved" | "rejected";
   actionDate?: string;
+  actionBy?: {
+    id: string;
+    name: string;
+  };
 }
 
 // Voting Committee type

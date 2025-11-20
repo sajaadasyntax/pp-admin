@@ -19,11 +19,32 @@ interface Locality {
   description?: string;
   active: boolean;
   regionId: string;
+  adminId?: string;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
   region?: Region;
   _count?: {
     users: number;
     adminUnits: number;
   };
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
 }
 
 export default function LocalitiesPage() {
@@ -43,6 +64,13 @@ export default function LocalitiesPage() {
     description: '',
     regionId: ''
   });
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedLocality, setSelectedLocality] = useState<Locality | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -150,6 +178,103 @@ export default function LocalitiesPage() {
     } catch (error) {
       alert('فشل في تحديث الحالة');
     }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف المحلية "${name}"؟ سيتم إرسال طلب الحذف للأمين العام للموافقة.`)) {
+      return;
+    }
+
+    try {
+      await apiCall('/deletion-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'LOCALITY',
+          entityId: id,
+          entityName: name,
+          reason: 'طلب حذف من المسؤول'
+        }),
+      });
+      alert('تم إرسال طلب الحذف بنجاح. سيتم مراجعته من قبل الأمين العام.');
+    } catch (error) {
+      alert('فشل في إرسال طلب الحذف');
+    }
+  };
+
+  // Fetch available admins
+  const fetchAvailableAdmins = async (localityId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=locality&hierarchyId=${localityId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (locality: Locality) => {
+    setSelectedLocality(locality);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(locality.id);
+  };
+
+  // Assign admin to locality
+  const handleAssignAdmin = async (adminId: string | null) => {
+    if (!selectedLocality || !token) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/hierarchy/localities/${selectedLocality.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        alert(adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح');
+        setShowAdminModal(false);
+        if (selectedRegion) fetchLocalities(selectedRegion);
+      } else {
+        alert('فشل في تعيين المسؤول');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء تعيين المسؤول');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Get admin name for display
+  const getAdminName = (locality: Locality): string => {
+    if (!locality.admin) return 'غير معين';
+    
+    const { profile, memberDetails, email, mobileNumber } = locality.admin;
+    
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    
+    return email || mobileNumber;
   };
 
   return (
@@ -317,18 +442,37 @@ export default function LocalitiesPage() {
                 <span>المستخدمين: <strong>{locality._count?.users || 0}</strong></span>
               </div>
 
-              <div className="flex gap-2">
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getAdminName(locality)}</div>
+              </div>
+
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleManageAdmin(locality)}
+                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                >
+                  إدارة المسؤول
+                </button>
                 <Link
                   href={`/dashboard/hierarchy/admin-units?locality=${locality.id}`}
-                  className="flex-1 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium text-center"
+                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium text-center"
                 >
                   الوحدات
                 </Link>
+              </div>
+              <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(locality)}
                   className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
                 >
                   تعديل
+                </button>
+                <button
+                  onClick={() => handleDelete(locality.id, locality.name)}
+                  className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  حذف
                 </button>
               </div>
             </div>
@@ -345,6 +489,80 @@ export default function LocalitiesPage() {
           العودة للتسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedLocality && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedLocality.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedLocality.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getAdminName(selectedLocality)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        onClick={() => handleAssignAdmin(admin.id)}
+                        disabled={submitting || selectedLocality.adminId === admin.id}
+                        className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                          selectedLocality.adminId === admin.id
+                            ? 'bg-purple-50 border-purple-300'
+                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                        } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-gray-900">{admin.name}</div>
+                        <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                        <div className="text-xs text-gray-400">{admin.adminLevel}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

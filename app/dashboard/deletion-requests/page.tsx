@@ -31,12 +31,19 @@ function DeletionRequestsContent() {
       try {
         setLoading(true);
         
-        // TODO: Replace with actual API call when backend endpoint is implemented
-        // const requestsData = await apiClient.deletionRequests.getAllRequests(user.token);
-        // setDeletionRequests(requestsData);
-        
-        // For now, set empty array until API is implemented
-        setDeletionRequests([]);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/deletion-requests`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setDeletionRequests(result.data || []);
+        } else {
+          setDeletionRequests([]);
+        }
         
       } catch (error) {
         console.error('Error fetching deletion requests:', error);
@@ -51,12 +58,36 @@ function DeletionRequestsContent() {
 
   // Handle request approval
   const handleApproveRequest = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من الموافقة على طلب الحذف؟ سيتم حذف العنصر نهائياً.')) {
+      return;
+    }
+
     try {
-      // TODO: Replace with actual API call when backend endpoint is implemented
-      // await apiClient.deletionRequests.approveRequest(token, id);
-      
-      // For now, show message that feature is not yet implemented
-      alert("الموافقة على طلبات الحذف غير متاحة حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/deletion-requests/${id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('تم الموافقة على الطلب وحذف العنصر بنجاح');
+        // Refresh the list
+        const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/deletion-requests`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (refreshResponse.ok) {
+          const result = await refreshResponse.json();
+          setDeletionRequests(result.data || []);
+        }
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل في الموافقة على الطلب');
+      }
     } catch (error) {
       console.error('Error approving deletion request:', error);
       alert("حدث خطأ أثناء الموافقة على الطلب. يرجى المحاولة مرة أخرى.");
@@ -65,12 +96,36 @@ function DeletionRequestsContent() {
 
   // Handle request rejection
   const handleRejectRequest = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من رفض طلب الحذف؟')) {
+      return;
+    }
+
     try {
-      // TODO: Replace with actual API call when backend endpoint is implemented
-      // await apiClient.deletionRequests.rejectRequest(token, id);
-      
-      // For now, show message that feature is not yet implemented
-      alert("رفض طلبات الحذف غير متاح حالياً. سيتم تنفيذ هذه الميزة قريباً.");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/deletion-requests/${id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('تم رفض الطلب بنجاح');
+        // Refresh the list
+        const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'}/deletion-requests`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (refreshResponse.ok) {
+          const result = await refreshResponse.json();
+          setDeletionRequests(result.data || []);
+        }
+      } else {
+        const error = await response.json();
+        alert(error.error || 'فشل في رفض الطلب');
+      }
     } catch (error) {
       console.error('Error rejecting deletion request:', error);
       alert("حدث خطأ أثناء رفض الطلب. يرجى المحاولة مرة أخرى.");
@@ -98,7 +153,21 @@ function DeletionRequestsContent() {
   };
 
   // Get request type Arabic name
-  const getRequestTypeName = (type: string) => {
+  const getRequestTypeName = (type: string, entityType?: string) => {
+    if (type === "hierarchy" && entityType) {
+      switch (entityType) {
+        case "REGION":
+          return "ولاية";
+        case "LOCALITY":
+          return "محلية";
+        case "ADMIN_UNIT":
+          return "وحدة إدارية";
+        case "DISTRICT":
+          return "حي";
+        default:
+          return entityType;
+      }
+    }
     switch (type) {
       case "user":
         return "مستخدم";
@@ -106,6 +175,8 @@ function DeletionRequestsContent() {
         return "تقرير";
       case "voting":
         return "تصويت";
+      case "hierarchy":
+        return "هرمي";
       default:
         return type;
     }
@@ -197,7 +268,7 @@ function DeletionRequestsContent() {
                           request.requestType
                         )}`}
                       >
-                        {getRequestTypeName(request.requestType)}
+                        {getRequestTypeName(request.requestType, request.entityType)}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">

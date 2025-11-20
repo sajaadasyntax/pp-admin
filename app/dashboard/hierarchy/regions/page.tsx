@@ -11,23 +11,59 @@ interface Region {
   code?: string;
   description?: string;
   active: boolean;
+  nationalLevelId?: string;
+  adminId?: string;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
   _count?: {
     users: number;
     localities: number;
   };
 }
 
+interface NationalLevel {
+  id: string;
+  name: string;
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
+}
+
 export default function RegionsPage() {
   const { user, token } = useAuth();
   const [regions, setRegions] = useState<Region[]>([]);
+  const [nationalLevels, setNationalLevels] = useState<NationalLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Region | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    description: ''
+    description: '',
+    nationalLevelId: ''
   });
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -44,6 +80,15 @@ export default function RegionsPage() {
     return response.json();
   }, [token]);
 
+  const fetchNationalLevels = useCallback(async () => {
+    try {
+      const data = await apiCall('/hierarchy/national-levels');
+      setNationalLevels(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching national levels:', error);
+    }
+  }, [apiCall]);
+
   const fetchRegions = useCallback(async () => {
     try {
       setLoading(true);
@@ -57,8 +102,9 @@ export default function RegionsPage() {
   }, [apiCall]);
 
   useEffect(() => {
+    fetchNationalLevels();
     fetchRegions();
-  }, [fetchRegions]);
+  }, [fetchNationalLevels, fetchRegions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,9 +134,31 @@ export default function RegionsPage() {
     setFormData({
       name: region.name,
       code: region.code || '',
-      description: region.description || ''
+      description: region.description || '',
+      nationalLevelId: region.nationalLevelId || ''
     });
     setShowForm(true);
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الولاية "${name}"؟ سيتم إرسال طلب الحذف للأمين العام للموافقة.`)) {
+      return;
+    }
+
+    try {
+      await apiCall('/deletion-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          entityType: 'REGION',
+          entityId: id,
+          entityName: name,
+          reason: 'طلب حذف من المسؤول'
+        }),
+      });
+      alert('تم إرسال طلب الحذف بنجاح. سيتم مراجعته من قبل الأمين العام.');
+    } catch (error) {
+      alert('فشل في إرسال طلب الحذف');
+    }
   };
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
@@ -103,6 +171,82 @@ export default function RegionsPage() {
     } catch (error) {
       alert('فشل في تحديث الحالة');
     }
+  };
+
+  // Fetch available admins
+  const fetchAvailableAdmins = async (regionId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=region&hierarchyId=${regionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (region: Region) => {
+    setSelectedRegion(region);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(region.id);
+  };
+
+  // Assign admin to region
+  const handleAssignAdmin = async (adminId: string | null) => {
+    if (!selectedRegion || !token) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/hierarchy/regions/${selectedRegion.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        alert(adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح');
+        setShowAdminModal(false);
+        fetchRegions();
+      } else {
+        alert('فشل في تعيين المسؤول');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء تعيين المسؤول');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Get admin name for display
+  const getAdminName = (region: Region): string => {
+    if (!region.admin) return 'غير معين';
+    
+    const { profile, memberDetails, email, mobileNumber } = region.admin;
+    
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    
+    return email || mobileNumber;
   };
 
   if (loading) {
@@ -125,7 +269,7 @@ export default function RegionsPage() {
           onClick={() => {
             setShowForm(true);
             setEditing(null);
-            setFormData({ name: '', code: '', description: '' });
+            setFormData({ name: '', code: '', description: '', nationalLevelId: '' });
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
         >
@@ -138,6 +282,20 @@ export default function RegionsPage() {
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">{editing ? 'تعديل الولاية' : 'إضافة ولاية جديدة'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">المستوى القومي *</label>
+              <select
+                value={formData.nationalLevelId}
+                onChange={(e) => setFormData({ ...formData, nationalLevelId: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">اختر المستوى القومي</option>
+                {nationalLevels.map(level => (
+                  <option key={level.id} value={level.id}>{level.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">الاسم *</label>
@@ -230,18 +388,37 @@ export default function RegionsPage() {
                 <span>المستخدمين: <strong>{region._count?.users || 0}</strong></span>
               </div>
 
-              <div className="flex gap-2">
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getAdminName(region)}</div>
+              </div>
+
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleManageAdmin(region)}
+                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                >
+                  إدارة المسؤول
+                </button>
                 <Link
                   href={`/dashboard/hierarchy/localities?region=${region.id}`}
-                  className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium text-center"
+                  className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-xs font-medium text-center"
                 >
                   المحليات
                 </Link>
+              </div>
+              <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(region)}
                   className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
                 >
                   تعديل
+                </button>
+                <button
+                  onClick={() => handleDelete(region.id, region.name)}
+                  className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                >
+                  حذف
                 </button>
               </div>
             </div>
@@ -258,6 +435,80 @@ export default function RegionsPage() {
           العودة للتسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedRegion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedRegion.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedRegion.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getAdminName(selectedRegion)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        onClick={() => handleAssignAdmin(admin.id)}
+                        disabled={submitting || selectedRegion.adminId === admin.id}
+                        className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                          selectedRegion.adminId === admin.id
+                            ? 'bg-purple-50 border-purple-300'
+                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                        } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-gray-900">{admin.name}</div>
+                        <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                        <div className="text-xs text-gray-400">{admin.adminLevel}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,10 +11,31 @@ interface NationalLevel {
   code?: string;
   description?: string;
   active: boolean;
+  adminId?: string;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
   _count?: {
     regions: number;
     users: number;
   };
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
 }
 
 export default function NationalLevelsPage() {
@@ -31,6 +52,12 @@ export default function NationalLevelsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<NationalLevel | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
 
   const canManage = !!user && (user.adminLevel === 'ADMIN' || user.adminLevel === 'GENERAL_SECRETARIAT' || user.role === 'ADMIN' || user.role === 'GENERAL_SECRETARIAT');
 
@@ -41,7 +68,7 @@ export default function NationalLevelsPage() {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/hierarchy/national-levels`, {
+      const response = await fetch(`${apiUrl}/hierarchy/national-levels?include=admin`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -210,6 +237,91 @@ export default function NationalLevelsPage() {
     }
   };
 
+  // Fetch available admins
+  const fetchAvailableAdmins = async (levelId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=national&hierarchyId=${levelId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (level: NationalLevel) => {
+    setSelectedLevel(level);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(level.id);
+  };
+
+  // Assign admin to level
+  const handleAssignAdmin = async (adminId: string | null) => {
+    if (!selectedLevel || !token) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/hierarchy/national-levels/${selectedLevel.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        setStatusMessage({
+          type: 'success',
+          text: adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح'
+        });
+        setShowAdminModal(false);
+        await fetchLevels();
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: 'فشل في تعيين المسؤول'
+        });
+      }
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        text: 'حدث خطأ أثناء تعيين المسؤول'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Get admin name for display
+  const getAdminName = (level: NationalLevel): string => {
+    if (!level.admin) return 'غير معين';
+    
+    const { profile, memberDetails, email, mobileNumber } = level.admin;
+    
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    
+    return email || mobileNumber;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -353,8 +465,19 @@ export default function NationalLevelsPage() {
                 <span>المستخدمين: <strong>{level._count?.users || 0}</strong></span>
               </div>
 
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getAdminName(level)}</div>
+              </div>
+
               {canManage && (
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => handleManageAdmin(level)}
+                    className="flex-1 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium"
+                  >
+                    إدارة المسؤول
+                  </button>
                   <button
                     onClick={() => handleEdit(level)}
                     className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
@@ -384,6 +507,80 @@ export default function NationalLevelsPage() {
           العودة للتسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedLevel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedLevel.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedLevel.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getAdminName(selectedLevel)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        onClick={() => handleAssignAdmin(admin.id)}
+                        disabled={submitting || selectedLevel.adminId === admin.id}
+                        className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                          selectedLevel.adminId === admin.id
+                            ? 'bg-purple-50 border-purple-300'
+                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                        } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-gray-900">{admin.name}</div>
+                        <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                        <div className="text-xs text-gray-400">{admin.adminLevel}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
