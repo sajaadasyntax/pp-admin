@@ -25,11 +25,32 @@ interface AdminUnit {
   description?: string;
   active: boolean;
   localityId: string;
+  adminId?: string;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
   locality?: Locality;
   _count?: {
     users: number;
     districts: number;
   };
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
 }
 
 export default function AdminUnitsPage() {
@@ -51,6 +72,13 @@ export default function AdminUnitsPage() {
     description: '',
     localityId: ''
   });
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedAdminUnit, setSelectedAdminUnit] = useState<AdminUnit | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -196,6 +224,82 @@ export default function AdminUnitsPage() {
     } catch (error) {
       alert('فشل في إرسال طلب الحذف');
     }
+  };
+
+  // Fetch available admins
+  const fetchAvailableAdmins = async (adminUnitId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=adminUnit&hierarchyId=${adminUnitId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (adminUnit: AdminUnit) => {
+    setSelectedAdminUnit(adminUnit);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(adminUnit.id);
+  };
+
+  // Assign admin to admin unit
+  const handleAssignAdmin = async (adminId: string | null) => {
+    if (!selectedAdminUnit || !token) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/hierarchy/admin-units/${selectedAdminUnit.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        alert(adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح');
+        setShowAdminModal(false);
+        if (selectedLocality) fetchAdminUnits(selectedLocality);
+      } else {
+        alert('فشل في تعيين المسؤول');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء تعيين المسؤول');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Get admin name for display
+  const getAdminName = (adminUnit: AdminUnit): string => {
+    if (!adminUnit.admin) return 'غير معين';
+    
+    const { profile, memberDetails, email, mobileNumber } = adminUnit.admin;
+    
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    
+    return email || mobileNumber;
   };
 
   return (
@@ -383,18 +487,31 @@ export default function AdminUnitsPage() {
                 </button>
               </div>
 
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getAdminName(adminUnit)}</div>
+              </div>
+
               <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
                 <span>الأحياء: <strong>{adminUnit._count?.districts || 0}</strong></span>
                 <span>المستخدمين: <strong>{adminUnit._count?.users || 0}</strong></span>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleManageAdmin(adminUnit)}
+                  className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-xs font-medium"
+                >
+                  إدارة المسؤول
+                </button>
                 <Link
                   href={`/dashboard/hierarchy/districts?adminUnit=${adminUnit.id}`}
-                  className="flex-1 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 text-sm font-medium text-center"
+                  className="flex-1 px-3 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 text-xs font-medium text-center"
                 >
                   الأحياء
                 </Link>
+              </div>
+              <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(adminUnit)}
                   className="flex-1 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium"
@@ -422,6 +539,80 @@ export default function AdminUnitsPage() {
           العودة للتسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedAdminUnit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedAdminUnit.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedAdminUnit.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getAdminName(selectedAdminUnit)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        onClick={() => handleAssignAdmin(admin.id)}
+                        disabled={submitting || selectedAdminUnit.adminId === admin.id}
+                        className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                          selectedAdminUnit.adminId === admin.id
+                            ? 'bg-indigo-50 border-indigo-300'
+                            : 'bg-white border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                        } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="font-medium text-gray-900">{admin.name}</div>
+                        <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                        <div className="text-xs text-gray-400">{admin.adminLevel}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
