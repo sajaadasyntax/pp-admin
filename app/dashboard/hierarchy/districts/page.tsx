@@ -24,6 +24,20 @@ interface AdminUnit {
   locality?: Locality;
 }
 
+interface DistrictUser {
+  id: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel?: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  memberDetails?: {
+    fullName?: string;
+  };
+}
+
 interface District {
   id: string;
   name: string;
@@ -32,6 +46,19 @@ interface District {
   active: boolean;
   adminUnitId: string;
   adminUnit?: AdminUnit;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
+  users?: DistrictUser[];
   _count?: {
     users: number;
   };
@@ -221,6 +248,28 @@ export default function DistrictsPage() {
     } catch (error) {
       alert('فشل في إرسال طلب الحذف');
     }
+  };
+
+  const getDistrictAdminName = (district: District): string => {
+    if (!district.admin) return 'غير معين';
+    const { profile, memberDetails, email, mobileNumber } = district.admin;
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    return email || mobileNumber;
+  };
+
+  const getDistrictUserName = (user: DistrictUser): string => {
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+    if (user.memberDetails?.fullName) {
+      return user.memberDetails.fullName;
+    }
+    return user.email || user.mobileNumber;
   };
 
   return (
@@ -435,6 +484,35 @@ export default function DistrictsPage() {
               <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
                 <span>المستخدمين: <strong>{district._count?.users || 0}</strong></span>
               </div>
+
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getDistrictAdminName(district)}</div>
+              </div>
+
+              {district.users && district.users.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-800">المستخدمون في هذا الحي</h4>
+                    <span className="text-xs text-gray-500">{district.users.length}</span>
+                  </div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {district.users.map((user) => (
+                      <div key={user.id} className="border border-gray-100 rounded-lg p-2 text-sm flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-900">{getDistrictUserName(user)}</div>
+                          <div className="text-xs text-gray-500">{user.mobileNumber}</div>
+                        </div>
+                        {user.adminLevel && user.adminLevel !== 'USER' && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-700">
+                            {user.adminLevel}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <button

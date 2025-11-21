@@ -5,6 +5,43 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../config/api';
 import Link from 'next/link';
 
+interface LevelUser {
+  id: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel?: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  memberDetails?: {
+    fullName?: string;
+  };
+}
+
+interface LevelRegion {
+  id: string;
+  name: string;
+  code?: string;
+  active: boolean;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
+  _count?: {
+    localities: number;
+    users: number;
+  };
+}
+
 interface NationalLevel {
   id: string;
   name: string;
@@ -28,6 +65,8 @@ interface NationalLevel {
     regions: number;
     users: number;
   };
+  regions?: LevelRegion[];
+  users?: LevelUser[];
 }
 
 interface AdminUser {
@@ -68,7 +107,7 @@ export default function NationalLevelsPage() {
     }
 
     try {
-      const response = await fetch(`${apiUrl}/hierarchy/national-levels?include=admin`, {
+      const response = await fetch(`${apiUrl}/hierarchy/national-levels?include=regions,users`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -322,6 +361,16 @@ export default function NationalLevelsPage() {
     return email || mobileNumber;
   };
 
+  const getUserDisplayName = (user: LevelUser): string => {
+    if (user.profile?.firstName && user.profile?.lastName) {
+      return `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+    if (user.memberDetails?.fullName) {
+      return user.memberDetails.fullName;
+    }
+    return user.email || user.mobileNumber;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -469,6 +518,67 @@ export default function NationalLevelsPage() {
                 <div className="text-xs text-gray-500 mb-1">المسؤول</div>
                 <div className="text-sm font-medium text-gray-900">{getAdminName(level)}</div>
               </div>
+
+            {level.users && level.users.filter((u) => u.adminLevel && u.adminLevel !== 'USER').length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-800">المسؤولون تحت هذا المستوى</h4>
+                  <span className="text-xs text-gray-500">{level.users.filter((u) => u.adminLevel && u.adminLevel !== 'USER').length} مسؤول</span>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {level.users
+                    .filter((u) => u.adminLevel && u.adminLevel !== 'USER')
+                    .map((adminUser) => (
+                      <div key={adminUser.id} className="border border-gray-100 rounded-lg p-2 text-sm flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-900">{getUserDisplayName(adminUser)}</div>
+                          <div className="text-xs text-gray-500">{adminUser.mobileNumber}</div>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700">
+                          {adminUser.adminLevel}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {level.regions && level.regions.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-800">الولايات التابعة</h4>
+                  <span className="text-xs text-gray-500">{level.regions.length} ولاية</span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {level.regions.map((region) => (
+                    <div key={region.id} className="border border-gray-100 rounded-lg p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-900">{region.name}</div>
+                          {region.code && <div className="text-xs text-gray-500">الكود: {region.code}</div>}
+                          <div className="text-xs text-gray-500 mt-1">
+                            المسؤول: {region.admin ? (
+                              region.admin.profile?.firstName && region.admin.profile?.lastName
+                                ? `${region.admin.profile.firstName} ${region.admin.profile.lastName}`
+                                : region.admin.memberDetails?.fullName || region.admin.email || region.admin.mobileNumber
+                              ) : 'غير معين'}
+                          </div>
+                        </div>
+                        <Link
+                          href={`/dashboard/hierarchy/regions`}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          إدارة
+                        </Link>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        المحليات: {region._count?.localities || 0} • المستخدمين: {region._count?.users || 0}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
               {canManage && (
                 <div className="flex gap-2">
