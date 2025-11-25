@@ -13,10 +13,54 @@ interface ExpatriateRegion {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  adminId?: string;
+  admin?: {
+    id: string;
+    email?: string;
+    mobileNumber: string;
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+    memberDetails?: {
+      fullName?: string;
+    };
+  };
+  sectorNationalLevels?: SectorNationalLevel[];
   _count?: {
     users: number;
     sectorNationalLevels: number;
   };
+}
+
+interface SectorNationalLevel {
+  id: string;
+  name: string;
+  code?: string;
+  sectorType: string;
+  description?: string;
+  active: boolean;
+  _count?: {
+    users: number;
+    sectorRegions: number;
+  };
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
+}
+
+interface UserForManagement {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel?: string;
+  expatriateRegionId?: string;
 }
 
 export default function ExpatriateRegionsPage() {
@@ -34,6 +78,27 @@ export default function ExpatriateRegionsPage() {
     description: '',
     active: true
   });
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<ExpatriateRegion | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // User management state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedRegionForUsers, setSelectedRegionForUsers] = useState<ExpatriateRegion | null>(null);
+  const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserForManagement[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submittingUsers, setSubmittingUsers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Sub-levels state
+  const [showSubLevels, setShowSubLevels] = useState<string | null>(null);
+  const [sectorNationalLevels, setSectorNationalLevels] = useState<SectorNationalLevel[]>([]);
+  const [loadingSubLevels, setLoadingSubLevels] = useState(false);
 
   // Fetch expatriate regions
   const fetchExpatriateRegions = async () => {
@@ -58,7 +123,7 @@ export default function ExpatriateRegionsPage() {
       }
 
       const data = await response.json();
-      setRegions(data.data || []);
+      setRegions(Array.isArray(data) ? data : data.data || []);
     } catch (error) {
       console.error('Error fetching expatriate regions:', error);
       setError('فشل في تحميل قطاعات المغتربين');
@@ -141,6 +206,275 @@ export default function ExpatriateRegionsPage() {
     } catch (error) {
       console.error('Error deleting expatriate region:', error);
       alert('فشل في حذف القطاع');
+    }
+  };
+
+  // Get admin name for display
+  const getAdminName = (region: ExpatriateRegion): string => {
+    if (!region.admin) return 'غير معين';
+    
+    const { profile, memberDetails, email, mobileNumber } = region.admin;
+    
+    if (profile?.firstName && profile?.lastName) {
+      return `${profile.firstName} ${profile.lastName}`;
+    }
+    
+    if (memberDetails?.fullName) {
+      return memberDetails.fullName;
+    }
+    
+    return email || mobileNumber;
+  };
+
+  // Fetch available admins
+  const fetchAvailableAdmins = async (regionId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=expatriateRegion&hierarchyId=${regionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter to show only non-admins OR admins of this level (EXPATRIATE_REGION)
+        const filtered = data.filter((admin: AdminUser) => {
+          const isNotAdmin = !admin.adminLevel || admin.adminLevel === 'USER';
+          const isAdminOfThisLevel = admin.adminLevel === 'EXPATRIATE_REGION';
+          return isNotAdmin || isAdminOfThisLevel;
+        });
+        setAvailableAdmins(filtered);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (region: ExpatriateRegion) => {
+    setSelectedRegion(region);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(region.id);
+  };
+
+  // Assign admin to expatriate region
+  const handleAssignAdmin = async (adminId: string | null, isCurrentAdmin: boolean = false) => {
+    if (!selectedRegion || !token) return;
+    
+    // If clicking on current admin, show confirmation dialog
+    if (isCurrentAdmin && adminId) {
+      const admin = availableAdmins.find(a => a.id === adminId);
+      const adminName = admin?.name || 'هذا المسؤول';
+      if (!window.confirm(`هل أنت متأكد من إلغاء صلاحية المسؤول "${adminName}"؟`)) {
+        return;
+      }
+      // After confirmation, set adminId to null to remove the admin
+      adminId = null;
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions/${selectedRegion.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        alert(adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح');
+        setShowAdminModal(false);
+        fetchExpatriateRegions();
+      } else {
+        alert('فشل في تعيين المسؤول');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء تعيين المسؤول');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Fetch users for expatriate region management
+  const fetchUsersForRegion = async (region: ExpatriateRegion) => {
+    if (!token) return;
+    
+    setLoadingUsers(true);
+    try {
+      // Get current users in the region
+      const currentUsersResponse = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions/${region.id}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (currentUsersResponse.ok) {
+        const usersData = await currentUsersResponse.json();
+        const allUsers = Array.isArray(usersData) ? usersData : usersData.data || [];
+        
+        const regionUsers = allUsers.map((u: any) => ({
+          id: u.id,
+          name: u.profile?.firstName && u.profile?.lastName
+            ? `${u.profile.firstName} ${u.profile.lastName}`
+            : u.memberDetails?.fullName || u.email || u.mobileNumber,
+          email: u.email,
+          mobileNumber: u.mobileNumber,
+          adminLevel: u.adminLevel,
+          expatriateRegionId: u.expatriateRegionId
+        }));
+        
+        setCurrentUsers(regionUsers);
+        
+        // Get available users (all users not in this region)
+        const allUsersResponse = await fetch(`${apiUrl}/users?page=1&limit=1000`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (allUsersResponse.ok) {
+          const allUsersData = await allUsersResponse.json();
+          const allUsersList = Array.isArray(allUsersData) ? allUsersData : allUsersData.users || allUsersData.data || [];
+          
+          const availableUsersList = allUsersList
+            .filter((u: any) => u.expatriateRegionId !== region.id)
+            .map((u: any) => ({
+              id: u.id,
+              name: u.profile?.firstName && u.profile?.lastName
+                ? `${u.profile.firstName} ${u.profile.lastName}`
+                : u.memberDetails?.fullName || u.email || u.mobileNumber,
+              email: u.email,
+              mobileNumber: u.mobileNumber,
+              adminLevel: u.adminLevel,
+              expatriateRegionId: u.expatriateRegionId
+            }));
+          
+          setAvailableUsers(availableUsersList);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      alert('فشل في تحميل المستخدمين');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Open user management modal
+  const handleManageUsers = (region: ExpatriateRegion) => {
+    setSelectedRegionForUsers(region);
+    setShowUserModal(true);
+    setSearchQuery('');
+    fetchUsersForRegion(region);
+  };
+
+  // Add user to expatriate region
+  const handleAddUserToRegion = async (userId: string) => {
+    if (!selectedRegionForUsers || !token) return;
+    
+    setSubmittingUsers(true);
+    try {
+      const response = await fetch(`${apiUrl}/expatriate-hierarchy/users/${userId}/expatriate-region`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ expatriateRegionId: selectedRegionForUsers.id }),
+      });
+
+      if (response.ok) {
+        alert('تم إضافة المستخدم إلى القطاع بنجاح');
+        await fetchUsersForRegion(selectedRegionForUsers);
+        fetchExpatriateRegions();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'فشل في إضافة المستخدم');
+      }
+    } catch (error) {
+      console.error('Error adding user to region:', error);
+      alert('حدث خطأ أثناء إضافة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
+  };
+
+  // Remove user from expatriate region
+  const handleRemoveUserFromRegion = async (userId: string) => {
+    if (!selectedRegionForUsers || !token) return;
+    
+    const user = currentUsers.find(u => u.id === userId);
+    const userName = user?.name || 'هذا المستخدم';
+    
+    if (!window.confirm(`هل أنت متأكد من إزالة "${userName}" من هذا القطاع؟`)) {
+      return;
+    }
+    
+    setSubmittingUsers(true);
+    try {
+      const response = await fetch(`${apiUrl}/expatriate-hierarchy/users/${userId}/expatriate-region`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ expatriateRegionId: null }),
+      });
+
+      if (response.ok) {
+        alert('تم إزالة المستخدم من القطاع بنجاح');
+        await fetchUsersForRegion(selectedRegionForUsers);
+        fetchExpatriateRegions();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'فشل في إزالة المستخدم');
+      }
+    } catch (error) {
+      console.error('Error removing user from region:', error);
+      alert('حدث خطأ أثناء إزالة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
+  };
+
+  // Fetch sector national levels for a region
+  const fetchSectorNationalLevels = async (regionId: string) => {
+    if (!token) return;
+    
+    setLoadingSubLevels(true);
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/sector-national-levels?expatriateRegionId=${regionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSectorNationalLevels(Array.isArray(data) ? data : data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching sector national levels:', error);
+    } finally {
+      setLoadingSubLevels(false);
+    }
+  };
+
+  // Toggle sub-levels display
+  const handleToggleSubLevels = (regionId: string) => {
+    if (showSubLevels === regionId) {
+      setShowSubLevels(null);
+      setSectorNationalLevels([]);
+    } else {
+      setShowSubLevels(regionId);
+      fetchSectorNationalLevels(regionId);
     }
   };
 
@@ -303,6 +637,11 @@ export default function ExpatriateRegionsPage() {
                 <p className="text-sm text-gray-600 mb-4">{region.description}</p>
               )}
 
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">المسؤول</div>
+                <div className="text-sm font-medium text-gray-900">{getAdminName(region)}</div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t">
                 <div>
                   <p className="text-xs text-gray-500">المستخدمين</p>
@@ -316,6 +655,62 @@ export default function ExpatriateRegionsPage() {
                 </div>
               </div>
 
+              {/* Sub-levels (Sector National Levels) */}
+              {showSubLevels === region.id && (
+                <div className="mb-4 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-cyan-900">مستويات القطاعات</h4>
+                    <button
+                      onClick={() => handleToggleSubLevels(region.id)}
+                      className="text-xs text-cyan-700 hover:text-cyan-900"
+                    >
+                      إخفاء
+                    </button>
+                  </div>
+                  {loadingSubLevels ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-500"></div>
+                    </div>
+                  ) : sectorNationalLevels.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-2">لا توجد مستويات قطاعات</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {sectorNationalLevels.map((level) => (
+                        <div key={level.id} className="p-2 bg-white rounded border border-cyan-100 text-sm">
+                          <div className="font-medium text-gray-900">{level.name}</div>
+                          <div className="text-xs text-gray-500">{level.sectorType}</div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            المناطق: {level._count?.sectorRegions || 0} • المستخدمين: {level._count?.users || 0}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleManageAdmin(region)}
+                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                >
+                  إدارة المسؤول
+                </button>
+                <button
+                  onClick={() => handleManageUsers(region)}
+                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-xs font-medium"
+                >
+                  إدارة المستخدمين
+                </button>
+              </div>
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleToggleSubLevels(region.id)}
+                  className="flex-1 px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 text-xs font-medium"
+                >
+                  {showSubLevels === region.id ? 'إخفاء المستويات' : 'عرض المستويات'}
+                </button>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(region)}
@@ -372,6 +767,250 @@ export default function ExpatriateRegionsPage() {
           العودة إلى التسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedRegion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedRegion.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedRegion.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getAdminName(selectedRegion)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => {
+                      const isCurrentAdmin = selectedRegion.adminId === admin.id;
+                      const isAdminOfThisLevel = admin.adminLevel === 'EXPATRIATE_REGION';
+                      return (
+                        <button
+                          key={admin.id}
+                          onClick={() => handleAssignAdmin(admin.id, isCurrentAdmin)}
+                          disabled={submitting}
+                          className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                            isCurrentAdmin
+                              ? 'bg-purple-50 border-purple-300'
+                              : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                          } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{admin.name}</div>
+                              <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                              {!isAdminOfThisLevel && (
+                                <div className="text-xs text-gray-400">{admin.adminLevel || 'مستخدم عادي'}</div>
+                              )}
+                            </div>
+                            {isAdminOfThisLevel && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                                مسؤول
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showUserModal && selectedRegionForUsers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة المستخدمين - {selectedRegionForUsers.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowUserModal(false);
+                    setSelectedRegionForUsers(null);
+                    setSearchQuery('');
+                    setCurrentUsers([]);
+                    setAvailableUsers([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="بحث عن مستخدم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {loadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Current Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون الحاليون ({currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {currentUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveUserFromRegion(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                            >
+                              إزالة
+                            </button>
+                          </div>
+                        ))}
+                      {currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون في هذا القطاع</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Available Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون المتاحون ({availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {availableUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between hover:border-blue-300"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleAddUserToRegion(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              إضافة
+                            </button>
+                          </div>
+                        ))}
+                      {availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون للإضافة</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUserModal(false);
+                    setSelectedRegionForUsers(null);
+                    setSearchQuery('');
+                    setCurrentUsers([]);
+                    setAvailableUsers([]);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
