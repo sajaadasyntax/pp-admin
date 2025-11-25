@@ -358,6 +358,8 @@ export default function DistrictsPage() {
       if (!window.confirm(`هل أنت متأكد من إلغاء صلاحية المسؤول "${adminName}"؟`)) {
         return;
       }
+      // After confirmation, set adminId to null to remove the admin
+      adminId = null;
     }
     
     setSubmitting(true);
@@ -904,7 +906,7 @@ export default function DistrictsPage() {
                       return (
                         <button
                           key={admin.id}
-                          onClick={() => handleAssignAdmin(isCurrentAdmin ? null : admin.id, isCurrentAdmin)}
+                          onClick={() => handleAssignAdmin(admin.id, isCurrentAdmin)}
                           disabled={submitting}
                           className={`w-full text-right p-3 rounded-lg border transition-colors ${
                             isCurrentAdmin
