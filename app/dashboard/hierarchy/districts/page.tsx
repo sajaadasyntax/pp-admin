@@ -45,6 +45,7 @@ interface District {
   description?: string;
   active: boolean;
   adminUnitId: string;
+  adminId?: string;
   adminUnit?: AdminUnit;
   admin?: {
     id: string;
@@ -61,6 +62,27 @@ interface District {
   users?: DistrictUser[];
   _count?: {
     users: number;
+  };
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel: string;
+}
+
+interface UserForManagement {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel?: string;
+  districtId?: string;
+  district?: {
+    id: string;
+    name: string;
   };
 }
 
@@ -85,6 +107,23 @@ export default function DistrictsPage() {
     description: '',
     adminUnitId: ''
   });
+  
+  // Admin management state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // User management state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedDistrictForUsers, setSelectedDistrictForUsers] = useState<District | null>(null);
+  const [districtHierarchy, setDistrictHierarchy] = useState<{regionId: string, localityId: string, adminUnitId: string} | null>(null);
+  const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserForManagement[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submittingUsers, setSubmittingUsers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -270,6 +309,267 @@ export default function DistrictsPage() {
       return user.memberDetails.fullName;
     }
     return user.email || user.mobileNumber;
+  };
+
+  // Fetch available admins
+  const fetchAvailableAdmins = async (districtId: string) => {
+    if (!token) return;
+    
+    setLoadingAdmins(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/available-admins?level=district&hierarchyId=${districtId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter to show only non-admins OR admins of this level (DISTRICT)
+        const filtered = data.filter((admin: AdminUser) => {
+          const isNotAdmin = !admin.adminLevel || admin.adminLevel === 'USER';
+          const isAdminOfThisLevel = admin.adminLevel === 'DISTRICT';
+          return isNotAdmin || isAdminOfThisLevel;
+        });
+        setAvailableAdmins(filtered);
+      }
+    } catch (error) {
+      console.error('Error fetching available admins:', error);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  // Open admin management modal
+  const handleManageAdmin = (district: District) => {
+    setSelectedDistrict(district);
+    setShowAdminModal(true);
+    fetchAvailableAdmins(district.id);
+  };
+
+  // Assign admin to district
+  const handleAssignAdmin = async (adminId: string | null, isCurrentAdmin: boolean = false) => {
+    if (!selectedDistrict || !token) return;
+    
+    // If clicking on current admin, show confirmation dialog
+    if (isCurrentAdmin && adminId) {
+      const admin = availableAdmins.find(a => a.id === adminId);
+      const adminName = admin?.name || 'هذا المسؤول';
+      if (!window.confirm(`هل أنت متأكد من إلغاء صلاحية المسؤول "${adminName}"؟`)) {
+        return;
+      }
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${apiUrl}/hierarchy/districts/${selectedDistrict.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ adminId }),
+      });
+
+      if (response.ok) {
+        alert(adminId ? 'تم تعيين المسؤول بنجاح' : 'تم إلغاء تعيين المسؤول بنجاح');
+        setShowAdminModal(false);
+        if (selectedAdminUnit) fetchDistricts(selectedAdminUnit);
+      } else {
+        alert('فشل في تعيين المسؤول');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء تعيين المسؤول');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Fetch users for district management
+  const fetchUsersForDistrict = async (district: District) => {
+    if (!token || !district.adminUnitId) return;
+    
+    setLoadingUsers(true);
+    try {
+      // Get current users in the district
+      const currentUsersResponse = await fetch(`${apiUrl}/users?page=1&limit=1000`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (currentUsersResponse.ok) {
+        const usersData = await currentUsersResponse.json();
+        const allUsers = Array.isArray(usersData) ? usersData : usersData?.users || usersData?.data || [];
+        
+        // Filter users in this district
+        const districtUsers = allUsers
+          .filter((u: any) => u.districtId === district.id)
+          .map((u: any) => ({
+            id: u.id,
+            name: u.profile?.firstName && u.profile?.lastName
+              ? `${u.profile.firstName} ${u.profile.lastName}`
+              : u.memberDetails?.fullName || u.email || u.mobileNumber,
+            email: u.email,
+            mobileNumber: u.mobileNumber,
+            adminLevel: u.adminLevel,
+            districtId: u.districtId,
+            district: u.district
+          }));
+        
+        setCurrentUsers(districtUsers);
+        
+        // Get available users from the same admin unit (not in this district)
+        const availableUsersList = allUsers
+          .filter((u: any) => {
+            // Users from same admin unit but not in this district
+            return u.adminUnitId === district.adminUnitId && u.districtId !== district.id;
+          })
+          .map((u: any) => ({
+            id: u.id,
+            name: u.profile?.firstName && u.profile?.lastName
+              ? `${u.profile.firstName} ${u.profile.lastName}`
+              : u.memberDetails?.fullName || u.email || u.mobileNumber,
+            email: u.email,
+            mobileNumber: u.mobileNumber,
+            adminLevel: u.adminLevel,
+            districtId: u.districtId,
+            district: u.district
+          }));
+        
+        setAvailableUsers(availableUsersList);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      alert('فشل في تحميل المستخدمين');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Open user management modal
+  const handleManageUsers = async (district: District) => {
+    setSelectedDistrictForUsers(district);
+    setShowUserModal(true);
+    setSearchQuery('');
+    
+    // Fetch hierarchy info for the district
+    try {
+      const adminUnit = adminUnits.find(au => au.id === district.adminUnitId);
+      if (adminUnit && adminUnit.localityId) {
+        const locality = localities.find(l => l.id === adminUnit.localityId);
+        if (locality && locality.regionId) {
+          setDistrictHierarchy({
+            regionId: locality.regionId,
+            localityId: adminUnit.localityId,
+            adminUnitId: district.adminUnitId
+          });
+        } else {
+          // Fetch locality if not in state
+          const localityData = await apiCall(`/hierarchy/localities/${adminUnit.localityId}`);
+          setDistrictHierarchy({
+            regionId: localityData.regionId,
+            localityId: adminUnit.localityId,
+            adminUnitId: district.adminUnitId
+          });
+        }
+      } else {
+        // Fetch admin unit if not in state
+        const adminUnitData = await apiCall(`/hierarchy/admin-units/${district.adminUnitId}`);
+        const localityData = await apiCall(`/hierarchy/localities/${adminUnitData.localityId}`);
+        setDistrictHierarchy({
+          regionId: localityData.regionId,
+          localityId: adminUnitData.localityId,
+          adminUnitId: district.adminUnitId
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching hierarchy:', error);
+    }
+    
+    fetchUsersForDistrict(district);
+  };
+
+  // Add user to district
+  const handleAddUserToDistrict = async (userId: string) => {
+    if (!selectedDistrictForUsers || !token || !districtHierarchy) {
+      alert('خطأ في بيانات الحي');
+      return;
+    }
+    
+    setSubmittingUsers(true);
+    try {
+      const response = await fetch(`${apiUrl}/users/${userId}/hierarchy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          hierarchyLevel: 'district',
+          regionId: districtHierarchy.regionId,
+          localityId: districtHierarchy.localityId,
+          adminUnitId: districtHierarchy.adminUnitId,
+          districtId: selectedDistrictForUsers.id
+        }),
+      });
+
+      if (response.ok) {
+        alert('تم إضافة المستخدم إلى الحي بنجاح');
+        await fetchUsersForDistrict(selectedDistrictForUsers);
+        if (selectedAdminUnit) fetchDistricts(selectedAdminUnit);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'فشل في إضافة المستخدم');
+      }
+    } catch (error) {
+      console.error('Error adding user to district:', error);
+      alert('حدث خطأ أثناء إضافة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
+  };
+
+  // Remove user from district
+  const handleRemoveUserFromDistrict = async (userId: string) => {
+    if (!selectedDistrictForUsers || !token) return;
+    
+    const user = currentUsers.find(u => u.id === userId);
+    const userName = user?.name || 'هذا المستخدم';
+    
+    if (!window.confirm(`هل أنت متأكد من إزالة "${userName}" من هذا الحي؟`)) {
+      return;
+    }
+    
+    setSubmittingUsers(true);
+    try {
+      // Set districtId to null to remove from district
+      const response = await fetch(`${apiUrl}/users/${userId}/hierarchy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          hierarchyLevel: 'none',
+          districtId: null
+        }),
+      });
+
+      if (response.ok) {
+        alert('تم إزالة المستخدم من الحي بنجاح');
+        await fetchUsersForDistrict(selectedDistrictForUsers);
+        if (selectedAdminUnit) fetchDistricts(selectedAdminUnit);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'فشل في إزالة المستخدم');
+      }
+    } catch (error) {
+      console.error('Error removing user from district:', error);
+      alert('حدث خطأ أثناء إزالة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
   };
 
   return (
@@ -514,6 +814,20 @@ export default function DistrictsPage() {
                 </div>
               )}
 
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleManageAdmin(district)}
+                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                >
+                  إدارة المسؤول
+                </button>
+                <button
+                  onClick={() => handleManageUsers(district)}
+                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-xs font-medium"
+                >
+                  إدارة المستخدمين
+                </button>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(district)}
@@ -542,6 +856,250 @@ export default function DistrictsPage() {
           العودة للتسلسل الهرمي
         </Link>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminModal && selectedDistrict && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة مسؤول - {selectedDistrict.name}</h2>
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedDistrict.admin && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">المسؤول الحالي</div>
+                  <div className="font-medium">{getDistrictAdminName(selectedDistrict)}</div>
+                  <button
+                    onClick={() => handleAssignAdmin(null)}
+                    disabled={submitting}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800"
+                  >
+                    إلغاء التعيين
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">تعيين مسؤول جديد</h3>
+                {loadingAdmins ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                  </div>
+                ) : availableAdmins.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {availableAdmins.map((admin) => {
+                      const isCurrentAdmin = selectedDistrict.adminId === admin.id;
+                      const isAdminOfThisLevel = admin.adminLevel === 'DISTRICT';
+                      return (
+                        <button
+                          key={admin.id}
+                          onClick={() => handleAssignAdmin(isCurrentAdmin ? null : admin.id, isCurrentAdmin)}
+                          disabled={submitting}
+                          className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                            isCurrentAdmin
+                              ? 'bg-purple-50 border-purple-300'
+                              : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                          } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{admin.name}</div>
+                              <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                              {!isAdminOfThisLevel && (
+                                <div className="text-xs text-gray-400">{admin.adminLevel || 'مستخدم عادي'}</div>
+                              )}
+                            </div>
+                            {isAdminOfThisLevel && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                                مسؤول
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showUserModal && selectedDistrictForUsers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة المستخدمين - {selectedDistrictForUsers.name}</h2>
+                <button
+                  onClick={() => setShowUserModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="بحث عن مستخدم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {loadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Current Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون الحاليون ({currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {currentUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveUserFromDistrict(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                            >
+                              إزالة
+                            </button>
+                          </div>
+                        ))}
+                      {currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون في هذا الحي</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Available Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون المتاحون ({availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {availableUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between hover:border-blue-300"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                              {user.district && (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  حي حالي: {user.district.name}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleAddUserToDistrict(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              إضافة
+                            </button>
+                          </div>
+                        ))}
+                      {availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون للإضافة</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUserModal(false);
+                    setSelectedDistrictForUsers(null);
+                    setDistrictHierarchy(null);
+                    setSearchQuery('');
+                    setCurrentUsers([]);
+                    setAvailableUsers([]);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

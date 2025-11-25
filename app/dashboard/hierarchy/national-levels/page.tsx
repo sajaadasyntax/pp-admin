@@ -290,7 +290,13 @@ export default function NationalLevelsPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setAvailableAdmins(data);
+        // Filter to show only non-admins OR admins of this level (NATIONAL_LEVEL)
+        const filtered = data.filter((admin: AdminUser) => {
+          const isNotAdmin = !admin.adminLevel || admin.adminLevel === 'USER';
+          const isAdminOfThisLevel = admin.adminLevel === 'NATIONAL_LEVEL';
+          return isNotAdmin || isAdminOfThisLevel;
+        });
+        setAvailableAdmins(filtered);
       }
     } catch (error) {
       console.error('Error fetching available admins:', error);
@@ -307,8 +313,17 @@ export default function NationalLevelsPage() {
   };
 
   // Assign admin to level
-  const handleAssignAdmin = async (adminId: string | null) => {
+  const handleAssignAdmin = async (adminId: string | null, isCurrentAdmin: boolean = false) => {
     if (!selectedLevel || !token) return;
+    
+    // If clicking on current admin, show confirmation dialog
+    if (isCurrentAdmin && adminId) {
+      const admin = availableAdmins.find(a => a.id === adminId);
+      const adminName = admin?.name || 'هذا المسؤول';
+      if (!window.confirm(`هل أنت متأكد من إلغاء صلاحية المسؤول "${adminName}"؟`)) {
+        return;
+      }
+    }
     
     setSubmitting(true);
     try {
@@ -659,22 +674,37 @@ export default function NationalLevelsPage() {
                   <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون</p>
                 ) : (
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {availableAdmins.map((admin) => (
-                      <button
-                        key={admin.id}
-                        onClick={() => handleAssignAdmin(admin.id)}
-                        disabled={submitting || selectedLevel.adminId === admin.id}
-                        className={`w-full text-right p-3 rounded-lg border transition-colors ${
-                          selectedLevel.adminId === admin.id
-                            ? 'bg-purple-50 border-purple-300'
-                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-                        } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <div className="font-medium text-gray-900">{admin.name}</div>
-                        <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
-                        <div className="text-xs text-gray-400">{admin.adminLevel}</div>
-                      </button>
-                    ))}
+                    {availableAdmins.map((admin) => {
+                      const isCurrentAdmin = selectedLevel.adminId === admin.id;
+                      const isAdminOfThisLevel = admin.adminLevel === 'NATIONAL_LEVEL';
+                      return (
+                        <button
+                          key={admin.id}
+                          onClick={() => handleAssignAdmin(isCurrentAdmin ? null : admin.id, isCurrentAdmin)}
+                          disabled={submitting}
+                          className={`w-full text-right p-3 rounded-lg border transition-colors ${
+                            isCurrentAdmin
+                              ? 'bg-purple-50 border-purple-300'
+                              : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                          } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{admin.name}</div>
+                              <div className="text-sm text-gray-500">{admin.mobileNumber}</div>
+                              {!isAdminOfThisLevel && (
+                                <div className="text-xs text-gray-400">{admin.adminLevel || 'مستخدم عادي'}</div>
+                              )}
+                            </div>
+                            {isAdminOfThisLevel && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                                مسؤول
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

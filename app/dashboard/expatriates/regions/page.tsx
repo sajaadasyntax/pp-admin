@@ -46,7 +46,8 @@ export default function ExpatriateRegionsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setRegions(data.data || []);
+        // Backend returns array directly, not wrapped in data object
+        setRegions(Array.isArray(data) ? data : data?.data || []);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -85,9 +86,15 @@ export default function ExpatriateRegionsPage() {
         setShowForm(false);
         setEditing(null);
         setFormData({ name: '', code: '', description: '', active: true });
-        fetchRegions();
+        // Refresh the list to show the new region
+        await fetchRegions();
+        alert(editing ? 'تم تحديث القطاع بنجاح' : 'تم إضافة القطاع بنجاح');
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'فشل في حفظ البيانات' }));
+        alert(errorData.error || 'فشل في حفظ البيانات');
       }
     } catch (error) {
+      console.error('Error saving region:', error);
       alert('فشل في حفظ البيانات');
     }
   };
