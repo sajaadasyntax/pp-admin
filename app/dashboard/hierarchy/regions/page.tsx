@@ -44,6 +44,9 @@ interface AdminUser {
   adminLevel: string;
 }
 
+// Check if user can manage regions (create/edit/delete)
+const FULL_ACCESS_LEVELS = ['ADMIN', 'GENERAL_SECRETARIAT'];
+
 export default function RegionsPage() {
   const { user, token } = useAuth();
   const [regions, setRegions] = useState<Region[]>([]);
@@ -64,6 +67,19 @@ export default function RegionsPage() {
   const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Permission checks based on user's admin level
+  const canCreateRegion = FULL_ACCESS_LEVELS.includes(user?.adminLevel || '');
+  const canModifyRegion = (region: Region) => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    // NATIONAL_LEVEL admin can modify regions in their national level
+    if (user.adminLevel === 'NATIONAL_LEVEL' && region.nationalLevelId === user.nationalLevelId) return true;
+    // REGION admin can only modify their own region
+    if (user.adminLevel === 'REGION' && region.id === user.regionId) return true;
+    return false;
+  };
+  const canManageAdmin = (region: Region) => canModifyRegion(region);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -282,16 +298,18 @@ export default function RegionsPage() {
           <h1 className="text-3xl font-bold text-gray-900">الولايات</h1>
           <p className="text-gray-600 mt-1">إدارة الولايات والمناطق</p>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setEditing(null);
-            setFormData({ name: '', code: '', description: '', nationalLevelId: '' });
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-        >
-          + إضافة ولاية
-        </button>
+        {canCreateRegion && (
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditing(null);
+              setFormData({ name: '', code: '', description: '', nationalLevelId: '' });
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+          >
+            + إضافة ولاية
+          </button>
+        )}
       </div>
 
       {/* Form Panel */}
@@ -388,16 +406,24 @@ export default function RegionsPage() {
                     <p className="text-sm text-gray-600 mt-2">{region.description}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => handleToggleStatus(region.id, region.active)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full ${
-                    region.active
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : 'bg-red-100 text-red-800 hover:bg-red-200'
-                  }`}
-                >
-                  {region.active ? 'فعال' : 'غير فعال'}
-                </button>
+                {canModifyRegion(region) ? (
+                  <button
+                    onClick={() => handleToggleStatus(region.id, region.active)}
+                    className={`px-3 py-1 text-xs font-medium rounded-full ${
+                      region.active
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-red-100 text-red-800 hover:bg-red-200'
+                    }`}
+                  >
+                    {region.active ? 'فعال' : 'غير فعال'}
+                  </button>
+                ) : (
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                    region.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {region.active ? 'فعال' : 'غير فعال'}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
@@ -411,12 +437,14 @@ export default function RegionsPage() {
               </div>
 
               <div className="flex gap-2 mb-2">
-                <button
-                  onClick={() => handleManageAdmin(region)}
-                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
-                >
-                  إدارة المسؤول
-                </button>
+                {canManageAdmin(region) && (
+                  <button
+                    onClick={() => handleManageAdmin(region)}
+                    className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                  >
+                    إدارة المسؤول
+                  </button>
+                )}
                 <Link
                   href={`/dashboard/hierarchy/localities?region=${region.id}`}
                   className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-xs font-medium text-center"
@@ -424,20 +452,22 @@ export default function RegionsPage() {
                   المحليات
                 </Link>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(region)}
-                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                >
-                  تعديل
-                </button>
-                <button
-                  onClick={() => handleDelete(region.id, region.name)}
-                  className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
-                >
-                  حذف
-                </button>
-              </div>
+              {canModifyRegion(region) && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(region)}
+                    className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    onClick={() => handleDelete(region.id, region.name)}
+                    className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                  >
+                    حذف
+                  </button>
+                </div>
+              )}
             </div>
           ))
         )}

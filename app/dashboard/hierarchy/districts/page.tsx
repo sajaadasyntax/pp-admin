@@ -86,6 +86,9 @@ interface UserForManagement {
   };
 }
 
+// Check if user can manage districts
+const FULL_ACCESS_LEVELS = ['ADMIN', 'GENERAL_SECRETARIAT'];
+
 export default function DistrictsPage() {
   const { user, token } = useAuth();
   const searchParams = useSearchParams();
@@ -117,6 +120,27 @@ export default function DistrictsPage() {
   
   // User management state
   const [showUserModal, setShowUserModal] = useState(false);
+
+  // Permission checks based on user's admin level
+  const canCreateDistrict = () => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (['NATIONAL_LEVEL', 'REGION', 'LOCALITY', 'ADMIN_UNIT'].includes(user.adminLevel)) return true;
+    return false;
+  };
+  
+  const canModifyDistrict = (district: District) => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    if (user.adminLevel === 'REGION' && district.adminUnit?.locality?.regionId === user.regionId) return true;
+    if (user.adminLevel === 'LOCALITY' && district.adminUnit?.localityId === user.localityId) return true;
+    if (user.adminLevel === 'ADMIN_UNIT' && district.adminUnitId === user.adminUnitId) return true;
+    if (user.adminLevel === 'DISTRICT' && district.id === user.districtId) return true;
+    return false;
+  };
+  
+  const canManageAdmin = (district: District) => canModifyDistrict(district);
   const [selectedDistrictForUsers, setSelectedDistrictForUsers] = useState<District | null>(null);
   const [districtHierarchy, setDistrictHierarchy] = useState<{regionId: string, localityId: string, adminUnitId: string} | null>(null);
   const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);

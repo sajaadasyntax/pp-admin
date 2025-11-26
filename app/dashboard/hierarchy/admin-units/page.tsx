@@ -53,6 +53,9 @@ interface AdminUser {
   adminLevel: string;
 }
 
+// Check if user can manage admin units
+const FULL_ACCESS_LEVELS = ['ADMIN', 'GENERAL_SECRETARIAT'];
+
 export default function AdminUnitsPage() {
   const { user, token } = useAuth();
   const searchParams = useSearchParams();
@@ -78,6 +81,26 @@ export default function AdminUnitsPage() {
   const [selectedAdminUnit, setSelectedAdminUnit] = useState<AdminUnit | null>(null);
   const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
+
+  // Permission checks based on user's admin level
+  const canCreateAdminUnit = () => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (['NATIONAL_LEVEL', 'REGION', 'LOCALITY'].includes(user.adminLevel)) return true;
+    return false;
+  };
+  
+  const canModifyAdminUnit = (adminUnit: AdminUnit) => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    if (user.adminLevel === 'REGION' && adminUnit.locality?.region?.id === user.regionId) return true;
+    if (user.adminLevel === 'LOCALITY' && adminUnit.localityId === user.localityId) return true;
+    if (user.adminLevel === 'ADMIN_UNIT' && adminUnit.id === user.adminUnitId) return true;
+    return false;
+  };
+  
+  const canManageAdmin = (adminUnit: AdminUnit) => canModifyAdminUnit(adminUnit);
   const [submitting, setSubmitting] = useState(false);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {

@@ -47,6 +47,9 @@ interface AdminUser {
   adminLevel: string;
 }
 
+// Check if user can manage localities
+const FULL_ACCESS_LEVELS = ['ADMIN', 'GENERAL_SECRETARIAT'];
+
 export default function LocalitiesPage() {
   const { user, token } = useAuth();
   const searchParams = useSearchParams();
@@ -71,6 +74,26 @@ export default function LocalitiesPage() {
   const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Permission checks based on user's admin level
+  const canCreateLocality = () => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    if (user.adminLevel === 'REGION') return true;
+    return false;
+  };
+  
+  const canModifyLocality = (locality: Locality) => {
+    if (!user) return false;
+    if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
+    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    if (user.adminLevel === 'REGION' && locality.regionId === user.regionId) return true;
+    if (user.adminLevel === 'LOCALITY' && locality.id === user.localityId) return true;
+    return false;
+  };
+  
+  const canManageAdmin = (locality: Locality) => canModifyLocality(locality);
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -302,21 +325,23 @@ export default function LocalitiesPage() {
           <h1 className="text-3xl font-bold text-gray-900">المحليات</h1>
           <p className="text-gray-600 mt-1">إدارة المحليات والمدن</p>
         </div>
-        <button
-          onClick={() => {
-            if (!selectedRegion) {
-              alert('الرجاء اختيار ولاية أولاً');
-              return;
-            }
-            setShowForm(true);
-            setEditing(null);
-            setFormData({ name: '', code: '', description: '', regionId: selectedRegion });
-          }}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-          disabled={!selectedRegion}
-        >
-          + إضافة محلية
-        </button>
+        {canCreateLocality() && (
+          <button
+            onClick={() => {
+              if (!selectedRegion) {
+                alert('الرجاء اختيار ولاية أولاً');
+                return;
+              }
+              setShowForm(true);
+              setEditing(null);
+              setFormData({ name: '', code: '', description: '', regionId: selectedRegion });
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+            disabled={!selectedRegion}
+          >
+            + إضافة محلية
+          </button>
+        )}
       </div>
 
       {/* Region Selector */}
@@ -442,16 +467,24 @@ export default function LocalitiesPage() {
                     <p className="text-sm text-gray-600 mt-2">{locality.description}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => handleToggleStatus(locality.id, locality.active)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full ${
-                    locality.active
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : 'bg-red-100 text-red-800 hover:bg-red-200'
-                  }`}
-                >
-                  {locality.active ? 'فعال' : 'غير فعال'}
-                </button>
+                {canModifyLocality(locality) ? (
+                  <button
+                    onClick={() => handleToggleStatus(locality.id, locality.active)}
+                    className={`px-3 py-1 text-xs font-medium rounded-full ${
+                      locality.active
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-red-100 text-red-800 hover:bg-red-200'
+                    }`}
+                  >
+                    {locality.active ? 'فعال' : 'غير فعال'}
+                  </button>
+                ) : (
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                    locality.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {locality.active ? 'فعال' : 'غير فعال'}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
@@ -465,12 +498,14 @@ export default function LocalitiesPage() {
               </div>
 
               <div className="flex gap-2 mb-2">
-                <button
-                  onClick={() => handleManageAdmin(locality)}
-                  className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
-                >
-                  إدارة المسؤول
-                </button>
+                {canManageAdmin(locality) && (
+                  <button
+                    onClick={() => handleManageAdmin(locality)}
+                    className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium"
+                  >
+                    إدارة المسؤول
+                  </button>
+                )}
                 <Link
                   href={`/dashboard/hierarchy/admin-units?locality=${locality.id}`}
                   className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-xs font-medium text-center"
@@ -478,20 +513,22 @@ export default function LocalitiesPage() {
                   الوحدات
                 </Link>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(locality)}
-                  className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
-                >
-                  تعديل
-                </button>
-                <button
-                  onClick={() => handleDelete(locality.id, locality.name)}
-                  className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
-                >
-                  حذف
-                </button>
-              </div>
+              {canModifyLocality(locality) && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(locality)}
+                    className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    onClick={() => handleDelete(locality.id, locality.name)}
+                    className="flex-1 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                  >
+                    حذف
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

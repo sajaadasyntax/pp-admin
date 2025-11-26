@@ -8,16 +8,33 @@ interface RootAdminOnlyProps {
   children: ReactNode;
 }
 
+// Admin levels that can manage users (tiered access)
+const USER_MANAGEMENT_LEVELS = [
+  'ADMIN',
+  'GENERAL_SECRETARIAT',
+  'NATIONAL_LEVEL',
+  'REGION',
+  'LOCALITY',
+  'ADMIN_UNIT',
+  'DISTRICT'
+];
+
 export default function RootAdminOnly({ children }: RootAdminOnlyProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
+  // Check if user has management-level access (can manage users in their scope)
+  const hasManagementAccess = user && (
+    user.level === "مدير النظام" || 
+    USER_MANAGEMENT_LEVELS.includes(user.adminLevel)
+  );
+
   useEffect(() => {
-    if (!isLoading && (!user || user.level !== "مدير النظام")) {
-      // User is not root admin, redirect to dashboard
+    if (!isLoading && !hasManagementAccess) {
+      // User doesn't have management access, redirect to dashboard
       router.push("/dashboard");
     }
-  }, [user, isLoading, router]);
+  }, [hasManagementAccess, isLoading, router]);
 
   // Show loading state
   if (isLoading) {
@@ -31,14 +48,14 @@ export default function RootAdminOnly({ children }: RootAdminOnlyProps) {
     );
   }
 
-  // Show unauthorized message if user is not root admin
-  if (!user || user.level !== "مدير النظام") {
+  // Show unauthorized message if user doesn't have management access
+  if (!hasManagementAccess) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="app-card p-8 text-center">
           <h2 className="text-xl font-bold text-[var(--error-600)] mb-4">غير مصرح بالوصول</h2>
           <p className="text-[var(--neutral-600)]">
-            هذه الصفحة مخصصة لمدير النظام فقط.
+            هذه الصفحة مخصصة للمسؤولين فقط.
           </p>
           <button
             onClick={() => router.push("/dashboard")}
@@ -51,6 +68,6 @@ export default function RootAdminOnly({ children }: RootAdminOnlyProps) {
     );
   }
 
-  // User is root admin, render children
+  // User has management access, render children
   return <>{children}</>;
 }
