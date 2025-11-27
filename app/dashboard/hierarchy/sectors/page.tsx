@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../config/api';
 import Link from 'next/link';
@@ -105,7 +105,7 @@ export default function SectorsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch sectors for selected level
-  const fetchSectors = async () => {
+  const fetchSectors = useCallback(async () => {
     if (!token) {
       setLoading(false);
       return;
@@ -131,7 +131,7 @@ export default function SectorsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedLevel, token]);
 
   const fetchSectorMembers = async (sectorId: string) => {
     if (!token) return;
@@ -265,7 +265,7 @@ export default function SectorsPage() {
 
   useEffect(() => {
     fetchSectors();
-  }, [selectedLevel, token]);
+  }, [fetchSectors]);
 
   const getSectorByType = (type: SectorType): SectorHierarchy | undefined => {
     return sectors.find(s => s.sectorType === type);

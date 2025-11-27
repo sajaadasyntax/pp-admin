@@ -15,6 +15,13 @@ interface Locality {
   id: string;
   name: string;
   regionId: string;
+  region?: Region;
+}
+
+interface Region {
+  id: string;
+  name: string;
+  nationalLevelId?: string;
 }
 
 interface AdminUnit {
@@ -132,7 +139,11 @@ export default function DistrictsPage() {
   const canModifyDistrict = (district: District) => {
     if (!user) return false;
     if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
-    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    // NATIONAL_LEVEL admins: Verify the district's region belongs to their national level
+    const adminLevel = user.adminLevel as string;
+    if (adminLevel === 'NATIONAL_LEVEL' && user.nationalLevelId) {
+      return district.adminUnit?.locality?.region?.nationalLevelId === user.nationalLevelId;
+    }
     if (user.adminLevel === 'REGION' && district.adminUnit?.locality?.regionId === user.regionId) return true;
     if (user.adminLevel === 'LOCALITY' && district.adminUnit?.localityId === user.localityId) return true;
     if (user.adminLevel === 'ADMIN_UNIT' && district.adminUnitId === user.adminUnitId) return true;

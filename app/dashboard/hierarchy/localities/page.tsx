@@ -10,6 +10,7 @@ interface Region {
   id: string;
   name: string;
   code?: string;
+  nationalLevelId?: string;
 }
 
 interface Locality {
@@ -87,7 +88,11 @@ export default function LocalitiesPage() {
   const canModifyLocality = (locality: Locality) => {
     if (!user) return false;
     if (FULL_ACCESS_LEVELS.includes(user.adminLevel)) return true;
-    if (user.adminLevel === 'NATIONAL_LEVEL') return true;
+    // NATIONAL_LEVEL admins: Verify the locality's region belongs to their national level
+    const adminLevel = user.adminLevel as string;
+    if (adminLevel === 'NATIONAL_LEVEL' && user.nationalLevelId) {
+      return locality.region?.nationalLevelId === user.nationalLevelId;
+    }
     if (user.adminLevel === 'REGION' && locality.regionId === user.regionId) return true;
     if (user.adminLevel === 'LOCALITY' && locality.id === user.localityId) return true;
     return false;
