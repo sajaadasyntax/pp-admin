@@ -159,11 +159,20 @@ export interface Bulletin {
   level?: UserLevel;
   published?: boolean;
   
-  // Hierarchy targeting fields
+  // Hierarchy targeting fields - Original
+  targetNationalLevelId?: string;
   targetRegionId?: string;
   targetLocalityId?: string;
   targetAdminUnitId?: string;
   targetDistrictId?: string;
+  // Hierarchy targeting fields - Expatriate
+  targetExpatriateRegionId?: string;
+  // Hierarchy targeting fields - Sector
+  targetSectorNationalLevelId?: string;
+  targetSectorRegionId?: string;
+  targetSectorLocalityId?: string;
+  targetSectorAdminUnitId?: string;
+  targetSectorDistrictId?: string;
   
   createdBy?: {
     id: string;

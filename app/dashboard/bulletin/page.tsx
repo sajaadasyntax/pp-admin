@@ -102,11 +102,43 @@ export default function BulletinPage() {
     }
     
     // Set hierarchy selection if bulletin has targeting information
-    if (bulletin.targetRegionId) {
-      // Determine the correct level based on available targeting info
-      let level: 'region' | 'locality' | 'adminUnit' | 'district' = 'region';
+    // Check which hierarchy type is being used
+    if (bulletin.targetExpatriateRegionId) {
+      // Expatriate hierarchy
+      setHierarchySelection({
+        hierarchyType: 'EXPATRIATE',
+        level: 'expatriateRegion',
+        expatriateRegionId: bulletin.targetExpatriateRegionId
+      });
+    } else if (bulletin.targetSectorRegionId || bulletin.targetSectorNationalLevelId) {
+      // Sector hierarchy
+      let level: 'nationalLevel' | 'region' | 'locality' | 'adminUnit' | 'district' = 'region';
+      if (bulletin.targetSectorDistrictId) {
+        level = 'district';
+      } else if (bulletin.targetSectorAdminUnitId) {
+        level = 'adminUnit';
+      } else if (bulletin.targetSectorLocalityId) {
+        level = 'locality';
+      } else if (bulletin.targetSectorNationalLevelId) {
+        level = 'nationalLevel';
+      }
       
-      if (bulletin.targetDistrictId) {
+      setHierarchySelection({
+        hierarchyType: 'SECTOR',
+        level,
+        sectorNationalLevelId: bulletin.targetSectorNationalLevelId,
+        sectorRegionId: bulletin.targetSectorRegionId,
+        sectorLocalityId: bulletin.targetSectorLocalityId,
+        sectorAdminUnitId: bulletin.targetSectorAdminUnitId,
+        sectorDistrictId: bulletin.targetSectorDistrictId
+      });
+    } else if (bulletin.targetRegionId || bulletin.targetNationalLevelId) {
+      // Original hierarchy
+      let level: 'nationalLevel' | 'region' | 'locality' | 'adminUnit' | 'district' = 'region';
+      
+      if (bulletin.targetNationalLevelId) {
+        level = 'nationalLevel';
+      } else if (bulletin.targetDistrictId) {
         level = 'district';
       } else if (bulletin.targetAdminUnitId) {
         level = 'adminUnit';
@@ -114,9 +146,10 @@ export default function BulletinPage() {
         level = 'locality';
       }
       
-      // Set the hierarchy selection
       setHierarchySelection({
+        hierarchyType: 'ORIGINAL',
         level,
+        nationalLevelId: bulletin.targetNationalLevelId,
         regionId: bulletin.targetRegionId,
         localityId: bulletin.targetLocalityId,
         adminUnitId: bulletin.targetAdminUnitId,

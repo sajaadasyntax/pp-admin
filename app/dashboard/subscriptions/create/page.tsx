@@ -37,7 +37,7 @@ export default function CreateSubscriptionPlan() {
         console.log('Auto-populating hierarchy for user:', userHierarchy);
         setFormData(prev => ({
           ...prev,
-          targetRegionId: userHierarchy.regionId,
+          targetRegionId: userHierarchy.regionId || '',
           targetLocalityId: userHierarchy.localityId || '',
           targetAdminUnitId: userHierarchy.adminUnitId || '',
           targetDistrictId: userHierarchy.districtId || '',
