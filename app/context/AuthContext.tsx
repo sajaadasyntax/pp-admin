@@ -7,17 +7,53 @@ import Cookies from 'js-cookie';
 // User levels in Arabic
 export type UserLevel = "الحي" | "الوحدة الإدارية" | "المحلية" | "الولاية" | "الإتحادية" | "مدير النظام";
 
+// AdminLevel type matching backend schema.prisma
+export type AdminLevelType = 
+  | 'GENERAL_SECRETARIAT' 
+  | 'REGION' 
+  | 'LOCALITY' 
+  | 'ADMIN_UNIT' 
+  | 'DISTRICT' 
+  | 'USER' 
+  | 'ADMIN'
+  | 'NATIONAL_LEVEL'
+  | 'EXPATRIATE_GENERAL'
+  | 'EXPATRIATE_REGION';
+
+// ActiveHierarchy type matching backend schema.prisma
+export type ActiveHierarchyType = 'ORIGINAL' | 'EXPATRIATE' | 'SECTOR';
+
 interface User {
   id: string;
   name: string;
   email: string;
   level: UserLevel;
   role: string;
-  adminLevel: 'GENERAL_SECRETARIAT' | 'REGION' | 'LOCALITY' | 'ADMIN_UNIT' | 'DISTRICT' | 'USER' | 'ADMIN';
+  adminLevel: AdminLevelType;
+  activeHierarchy?: ActiveHierarchyType;
+  
+  // Original hierarchy
+  nationalLevelId?: string;
   regionId?: string;
   localityId?: string;
   adminUnitId?: string;
   districtId?: string;
+  
+  // Expatriate hierarchy
+  expatriateRegionId?: string;
+  
+  // Sector hierarchy
+  sectorNationalLevelId?: string;
+  sectorRegionId?: string;
+  sectorLocalityId?: string;
+  sectorAdminUnitId?: string;
+  sectorDistrictId?: string;
+  
+  // Original hierarchy objects
+  nationalLevel?: {
+    id: string;
+    name: string;
+  };
   region?: {
     id: string;
     name: string;
@@ -31,6 +67,34 @@ interface User {
     name: string;
   };
   district?: {
+    id: string;
+    name: string;
+  };
+  
+  // Expatriate hierarchy objects
+  expatriateRegion?: {
+    id: string;
+    name: string;
+  };
+  
+  // Sector hierarchy objects
+  sectorNationalLevel?: {
+    id: string;
+    name: string;
+  };
+  sectorRegion?: {
+    id: string;
+    name: string;
+  };
+  sectorLocality?: {
+    id: string;
+    name: string;
+  };
+  sectorAdminUnit?: {
+    id: string;
+    name: string;
+  };
+  sectorDistrict?: {
     id: string;
     name: string;
   };
@@ -85,14 +149,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             level: mapRoleToLevel(userData),
             role: userData.role,
             adminLevel: userData.adminLevel,
+            activeHierarchy: userData.activeHierarchy,
+            // Original hierarchy
+            nationalLevelId: userData.nationalLevelId,
             regionId: userData.regionId,
             localityId: userData.localityId,
             adminUnitId: userData.adminUnitId,
             districtId: userData.districtId,
+            // Expatriate hierarchy
+            expatriateRegionId: userData.expatriateRegionId,
+            // Sector hierarchy
+            sectorNationalLevelId: userData.sectorNationalLevelId,
+            sectorRegionId: userData.sectorRegionId,
+            sectorLocalityId: userData.sectorLocalityId,
+            sectorAdminUnitId: userData.sectorAdminUnitId,
+            sectorDistrictId: userData.sectorDistrictId,
+            // Original hierarchy objects
+            nationalLevel: userData.nationalLevel,
             region: userData.region,
             locality: userData.locality,
             adminUnit: userData.adminUnit,
-            district: userData.district
+            district: userData.district,
+            // Expatriate hierarchy objects
+            expatriateRegion: userData.expatriateRegion,
+            // Sector hierarchy objects
+            sectorNationalLevel: userData.sectorNationalLevel,
+            sectorRegion: userData.sectorRegion,
+            sectorLocality: userData.sectorLocality,
+            sectorAdminUnit: userData.sectorAdminUnit,
+            sectorDistrict: userData.sectorDistrict
           });
         }
       } catch (err) {
@@ -113,10 +198,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const mapRoleToLevel = (userData: any): UserLevel => {
     // Map backend adminLevel to frontend user levels
-    const { adminLevel, regionName, localityName, adminUnitName, districtName } = userData;
+    const { adminLevel } = userData;
     
     switch(adminLevel) {
       case "GENERAL_SECRETARIAT":
+        return "الإتحادية";
+      case "NATIONAL_LEVEL":
         return "الإتحادية";
       case "REGION":
         return "الولاية";
@@ -128,6 +215,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return "الحي";
       case "ADMIN":
         return "مدير النظام";
+      case "EXPATRIATE_GENERAL":
+        return "الإتحادية";
+      case "EXPATRIATE_REGION":
+        return "الولاية";
       default:
         return "الحي";
     }
@@ -160,14 +251,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         level: mapRoleToLevel(userData),
         role: userData.role,
         adminLevel: userData.adminLevel,
+        activeHierarchy: userData.activeHierarchy,
+        // Original hierarchy
+        nationalLevelId: userData.nationalLevelId,
         regionId: userData.regionId,
         localityId: userData.localityId,
         adminUnitId: userData.adminUnitId,
         districtId: userData.districtId,
+        // Expatriate hierarchy
+        expatriateRegionId: userData.expatriateRegionId,
+        // Sector hierarchy
+        sectorNationalLevelId: userData.sectorNationalLevelId,
+        sectorRegionId: userData.sectorRegionId,
+        sectorLocalityId: userData.sectorLocalityId,
+        sectorAdminUnitId: userData.sectorAdminUnitId,
+        sectorDistrictId: userData.sectorDistrictId,
+        // Original hierarchy objects
+        nationalLevel: userData.nationalLevel,
         region: userData.region,
         locality: userData.locality,
         adminUnit: userData.adminUnit,
-        district: userData.district
+        district: userData.district,
+        // Expatriate hierarchy objects
+        expatriateRegion: userData.expatriateRegion,
+        // Sector hierarchy objects
+        sectorNationalLevel: userData.sectorNationalLevel,
+        sectorRegion: userData.sectorRegion,
+        sectorLocality: userData.sectorLocality,
+        sectorAdminUnit: userData.sectorAdminUnit,
+        sectorDistrict: userData.sectorDistrict
       });
       
       return true;

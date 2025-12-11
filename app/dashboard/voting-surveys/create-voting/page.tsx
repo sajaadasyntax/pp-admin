@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../config/api';
+import HierarchySelector, { HierarchySelection } from '../../../components/HierarchySelector';
 
 export default function CreateVotingPage() {
   const { user, token } = useAuth();
@@ -20,43 +21,10 @@ export default function CreateVotingPage() {
     startDate: '',
     endDate: '',
     options: ['', ''],
-    targetRegionId: '',
-    targetLocalityId: '',
-    targetAdminUnitId: '',
-    targetDistrictId: ''
   });
 
-  const [hierarchyOptions, setHierarchyOptions] = useState({
-    regions: [],
-    localities: [],
-    adminUnits: [],
-    districts: []
-  });
-
-  // Fetch hierarchy options
-  useEffect(() => {
-    const fetchHierarchyOptions = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/hierarchy/full-hierarchy`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setHierarchyOptions({ regions: data, localities: [], adminUnits: [], districts: [] });
-        }
-      } catch (err) {
-        console.error('Error fetching hierarchy options:', err);
-      }
-    };
-
-    if (token) {
-      fetchHierarchyOptions();
-    }
-  }, [token]);
+  // Hierarchy selection state
+  const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -92,11 +60,20 @@ export default function CreateVotingPage() {
     }
   };
 
+  const handleHierarchyChange = (selection: HierarchySelection | null) => {
+    setHierarchySelection(selection);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.targetRegionId) {
-      setError('يرجى ملء جميع الحقول المطلوبة');
+    if (!formData.title || !formData.description) {
+      setError('يرجى ملء العنوان والوصف');
+      return;
+    }
+
+    if (!hierarchySelection) {
+      setError('يرجى اختيار مستوى الاستهداف');
       return;
     }
 
@@ -109,16 +86,14 @@ export default function CreateVotingPage() {
       setLoading(true);
       setError(null);
 
-      // Determine target level based on selected hierarchy ids
-      const targetLevel = formData.targetDistrictId
-        ? 'district'
-        : formData.targetAdminUnitId
-        ? 'adminUnit'
-        : formData.targetLocalityId
-        ? 'locality'
-        : 'region';
+      // Determine target level based on hierarchy selection
+      let targetLevel = hierarchySelection.level;
+      if (hierarchySelection.hierarchyType === 'GLOBAL') {
+        targetLevel = 'nationalLevel';
+      }
 
-      const votingData = {
+      // Build voting data with hierarchy targeting
+      const votingData: any = {
         title: formData.title,
         description: formData.description,
         voteType: formData.voteType,
@@ -128,11 +103,47 @@ export default function CreateVotingPage() {
           .filter(opt => opt.trim())
           .map((opt, index) => ({ id: `option-${index}`, text: opt.trim() })),
         targetLevel,
-        targetRegionId: formData.targetRegionId,
-        targetLocalityId: formData.targetLocalityId || null,
-        targetAdminUnitId: formData.targetAdminUnitId || null,
-        targetDistrictId: formData.targetDistrictId || null
       };
+
+      // Add hierarchy targeting based on selection type
+      if (hierarchySelection.hierarchyType === 'ORIGINAL') {
+        if (hierarchySelection.nationalLevelId) {
+          votingData.targetNationalLevelId = hierarchySelection.nationalLevelId;
+        }
+        if (hierarchySelection.regionId) {
+          votingData.targetRegionId = hierarchySelection.regionId;
+        }
+        if (hierarchySelection.localityId) {
+          votingData.targetLocalityId = hierarchySelection.localityId;
+        }
+        if (hierarchySelection.adminUnitId) {
+          votingData.targetAdminUnitId = hierarchySelection.adminUnitId;
+        }
+        if (hierarchySelection.districtId) {
+          votingData.targetDistrictId = hierarchySelection.districtId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
+        if (hierarchySelection.expatriateRegionId) {
+          votingData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'SECTOR') {
+        if (hierarchySelection.sectorNationalLevelId) {
+          votingData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
+        }
+        if (hierarchySelection.sectorRegionId) {
+          votingData.targetSectorRegionId = hierarchySelection.sectorRegionId;
+        }
+        if (hierarchySelection.sectorLocalityId) {
+          votingData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
+        }
+        if (hierarchySelection.sectorAdminUnitId) {
+          votingData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
+        }
+        if (hierarchySelection.sectorDistrictId) {
+          votingData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
+        }
+      }
+      // GLOBAL type doesn't add any targeting - content is visible to everyone
 
       const response = await fetch(`${apiUrl}/content/voting`, {
         method: 'POST',
@@ -236,9 +247,9 @@ export default function CreateVotingPage() {
             </div>
           </div>
 
-          {/* Dates and Hierarchy */}
+          {/* Dates */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-[var(--neutral-900)]">التواريخ والاستهداف</h3>
+            <h3 className="text-lg font-semibold text-[var(--neutral-900)]">التواريخ</h3>
             
             <div>
               <label className="block text-sm font-medium text-[var(--neutral-700)] mb-2">
@@ -267,42 +278,48 @@ export default function CreateVotingPage() {
                 required
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--neutral-700)] mb-2">
-                الولاية *
-              </label>
-              <select
-                name="targetRegionId"
-                value={formData.targetRegionId}
-                onChange={handleInputChange}
-                className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 focus:border-[var(--primary-500)] focus:outline-none"
-                required
-              >
-                <option value="">اختر الولاية</option>
-                {hierarchyOptions.regions.map((region: any) => (
-                  <option key={region.id} value={region.id}>{region.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--neutral-700)] mb-2">
-                المحلية
-              </label>
-              <select
-                name="targetLocalityId"
-                value={formData.targetLocalityId}
-                onChange={handleInputChange}
-                className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 focus:border-[var(--primary-500)] focus:outline-none"
-              >
-                <option value="">اختر المحلية (اختياري)</option>
-                {hierarchyOptions.localities.map((locality: any) => (
-                  <option key={locality.id} value={locality.id}>{locality.name}</option>
-                ))}
-              </select>
-            </div>
           </div>
+        </div>
+
+        {/* Hierarchy Targeting */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-[var(--neutral-900)]">الاستهداف</h3>
+          <p className="text-sm text-[var(--neutral-500)]">
+            اختر من سيرى هذا التصويت. يمكنك استهداف منطقة جغرافية، أو المغتربين، أو قطاع معين، أو جعله عالمياً للجميع.
+          </p>
+          
+          <HierarchySelector
+            onSelectionChange={handleHierarchyChange}
+            initialSelection={hierarchySelection}
+            showGlobalOption={true}
+            className="bg-gray-50 p-4 rounded-lg"
+          />
+
+          {hierarchySelection && (
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>الاستهداف المحدد:</strong>{' '}
+                {hierarchySelection.hierarchyType === 'GLOBAL' && 'عالمي - سيراه جميع المستخدمين'}
+                {hierarchySelection.hierarchyType === 'ORIGINAL' && `جغرافي - ${
+                  hierarchySelection.districtName || 
+                  hierarchySelection.adminUnitName || 
+                  hierarchySelection.localityName || 
+                  hierarchySelection.regionName || 
+                  hierarchySelection.nationalLevelName || 
+                  'غير محدد'
+                }`}
+                {hierarchySelection.hierarchyType === 'EXPATRIATE' && `المغتربين - ${hierarchySelection.expatriateRegionName || 'غير محدد'}`}
+                {hierarchySelection.hierarchyType === 'SECTOR' && `القطاع - ${
+                  hierarchySelection.sectorDistrictName || 
+                  hierarchySelection.sectorAdminUnitName || 
+                  hierarchySelection.sectorLocalityName || 
+                  hierarchySelection.sectorRegionName || 
+                  hierarchySelection.sectorNationalLevelName || 
+                  'غير محدد'
+                }`}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Options */}
