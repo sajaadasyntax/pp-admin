@@ -229,9 +229,9 @@ export default function HierarchySelector({
       }
       
       if (hierarchyType === 'EXPATRIATE') {
-        // Load expatriate regions
+        // Load expatriate regions - use correct endpoint path
         try {
-          const expData = await apiCall('/hierarchy/expatriate-regions');
+          const expData = await apiCall('/expatriate-hierarchy/expatriate-regions');
           setExpatriateRegions(Array.isArray(expData) ? expData : expData.data || []);
         } catch {
           setExpatriateRegions([]);
@@ -239,17 +239,17 @@ export default function HierarchySelector({
       }
       
       if (hierarchyType === 'SECTOR') {
-        // Load sector national levels
+        // Load sector national levels - use correct endpoint path
         try {
-          const snlData = await apiCall('/hierarchy/sector-national-levels');
+          const snlData = await apiCall('/sector-hierarchy/sector-national-levels');
           setSectorNationalLevels(Array.isArray(snlData) ? snlData : snlData.data || []);
         } catch {
           setSectorNationalLevels([]);
         }
         
-        // Load sector regions
+        // Load sector regions - use correct endpoint path
         try {
-          const srData = await apiCall('/hierarchy/sector-regions');
+          const srData = await apiCall('/sector-hierarchy/sector-regions');
           setSectorRegions(Array.isArray(srData) ? srData : srData.data || []);
         } catch {
           setSectorRegions([]);

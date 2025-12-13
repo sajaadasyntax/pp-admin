@@ -422,26 +422,22 @@ export default function DistrictsPage() {
     }
   };
 
-  // Fetch users for district management
+  // Fetch users for district management using hierarchical endpoint
   const fetchUsersForDistrict = async (district: District) => {
     if (!token || !district.adminUnitId) return;
     
     setLoadingUsers(true);
     try {
-      // Get current users in the district
-      const currentUsersResponse = await fetch(`${apiUrl}/users?page=1&limit=1000`, {
+      // Use hierarchical users endpoint to get users in this specific district
+      const districtUsersResponse = await fetch(`${apiUrl}/hierarchical-users/users/districts/${district.id}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
       
-      if (currentUsersResponse.ok) {
-        const usersData = await currentUsersResponse.json();
-        const allUsers = Array.isArray(usersData) ? usersData : usersData?.users || usersData?.data || [];
-        
-        // Filter users in this district
-        const districtUsers = allUsers
-          .filter((u: any) => u.districtId === district.id)
+      if (districtUsersResponse.ok) {
+        const districtUsersData = await districtUsersResponse.json();
+        const districtUsers = (Array.isArray(districtUsersData) ? districtUsersData : districtUsersData?.users || [])
           .map((u: any) => ({
             id: u.id,
             name: u.profile?.firstName && u.profile?.lastName
@@ -455,13 +451,34 @@ export default function DistrictsPage() {
           }));
         
         setCurrentUsers(districtUsers);
+      } else if (districtUsersResponse.status === 403) {
+        // User doesn't have permission to view users
+        console.warn('No permission to view district users');
+        setCurrentUsers([]);
+      } else if (districtUsersResponse.status === 404) {
+        // Endpoint not found or district doesn't exist
+        console.warn('District users endpoint not found or district does not exist');
+        setCurrentUsers([]);
+      } else {
+        // Other errors - log and set empty
+        console.error('Failed to fetch district users:', districtUsersResponse.status, districtUsersResponse.statusText);
+        setCurrentUsers([]);
+      }
+      
+      // Get available users from the same admin unit using hierarchical endpoint
+      const adminUnitUsersResponse = await fetch(`${apiUrl}/hierarchical-users/users/admin-units/${district.adminUnitId}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (adminUnitUsersResponse.ok) {
+        const adminUnitUsersData = await adminUnitUsersResponse.json();
+        const allAdminUnitUsers = Array.isArray(adminUnitUsersData) ? adminUnitUsersData : adminUnitUsersData?.users || [];
         
-        // Get available users from the same admin unit (not in this district)
-        const availableUsersList = allUsers
-          .filter((u: any) => {
-            // Users from same admin unit but not in this district
-            return u.adminUnitId === district.adminUnitId && u.districtId !== district.id;
-          })
+        // Filter to only users not in this district
+        const availableUsersList = allAdminUnitUsers
+          .filter((u: any) => u.districtId !== district.id)
           .map((u: any) => ({
             id: u.id,
             name: u.profile?.firstName && u.profile?.lastName
@@ -475,9 +492,22 @@ export default function DistrictsPage() {
           }));
         
         setAvailableUsers(availableUsersList);
+      } else if (adminUnitUsersResponse.status === 403) {
+        // User doesn't have permission to view available users
+        setAvailableUsers([]);
+      } else if (adminUnitUsersResponse.status === 404) {
+        // Endpoint not found or admin unit doesn't exist
+        console.warn('Admin unit users endpoint not found or admin unit does not exist');
+        setAvailableUsers([]);
+      } else {
+        // Other errors - log and set empty
+        console.error('Failed to fetch admin unit users:', adminUnitUsersResponse.status, adminUnitUsersResponse.statusText);
+        setAvailableUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setCurrentUsers([]);
+      setAvailableUsers([]);
       alert('فشل في تحميل المستخدمين');
     } finally {
       setLoadingUsers(false);
