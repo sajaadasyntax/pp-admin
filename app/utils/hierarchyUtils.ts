@@ -167,23 +167,27 @@ export function getUserHierarchySelection(user: User | null): HierarchySelection
       level,
     };
 
-    if (user.sectorNationalLevelId) {
+    // Only include hierarchy IDs up to the admin's level
+    const levelHierarchy = ['nationalLevel', 'region', 'locality', 'adminUnit', 'district'];
+    const levelIndex = levelHierarchy.indexOf(level);
+
+    if (user.sectorNationalLevelId && levelIndex >= 0) {
       selection.sectorNationalLevelId = user.sectorNationalLevelId;
       selection.sectorNationalLevelName = user.sectorNationalLevel?.name || '';
     }
-    if (user.sectorRegionId) {
+    if (user.sectorRegionId && levelIndex >= 1) {
       selection.sectorRegionId = user.sectorRegionId;
       selection.sectorRegionName = user.sectorRegion?.name || '';
     }
-    if (user.sectorLocalityId) {
+    if (user.sectorLocalityId && levelIndex >= 2) {
       selection.sectorLocalityId = user.sectorLocalityId;
       selection.sectorLocalityName = user.sectorLocality?.name || '';
     }
-    if (user.sectorAdminUnitId) {
+    if (user.sectorAdminUnitId && levelIndex >= 3) {
       selection.sectorAdminUnitId = user.sectorAdminUnitId;
       selection.sectorAdminUnitName = user.sectorAdminUnit?.name || '';
     }
-    if (user.sectorDistrictId) {
+    if (user.sectorDistrictId && levelIndex >= 4) {
       selection.sectorDistrictId = user.sectorDistrictId;
       selection.sectorDistrictName = user.sectorDistrict?.name || '';
     }
@@ -227,23 +231,29 @@ export function getUserHierarchySelection(user: User | null): HierarchySelection
   };
 
   // Add hierarchy information based on available data
-  if (user.nationalLevelId) {
+  // IMPORTANT: Only include hierarchy IDs up to the admin's level, not below
+  // This ensures that REGION admins create region-wide bulletins, not district-specific ones
+  const levelHierarchy = ['nationalLevel', 'region', 'locality', 'adminUnit', 'district'];
+  const levelIndex = levelHierarchy.indexOf(level);
+  
+  if (user.nationalLevelId && levelIndex >= 0) {
     selection.nationalLevelId = user.nationalLevelId;
     selection.nationalLevelName = user.nationalLevel?.name || '';
   }
-  if (user.regionId) {
+  if (user.regionId && levelIndex >= 1) {
     selection.regionId = user.regionId;
     selection.regionName = user.region?.name || '';
   }
-  if (user.localityId) {
+  // Only include lower levels if the admin is at that level or below
+  if (user.localityId && levelIndex >= 2) {
     selection.localityId = user.localityId;
     selection.localityName = user.locality?.name || '';
   }
-  if (user.adminUnitId) {
+  if (user.adminUnitId && levelIndex >= 3) {
     selection.adminUnitId = user.adminUnitId;
     selection.adminUnitName = user.adminUnit?.name || '';
   }
-  if (user.districtId) {
+  if (user.districtId && levelIndex >= 4) {
     selection.districtId = user.districtId;
     selection.districtName = user.district?.name || '';
   }
