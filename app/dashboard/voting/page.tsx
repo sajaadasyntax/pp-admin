@@ -134,9 +134,23 @@ export default function VotingPage() {
       return;
     }
 
-    // Validate hierarchy selection
-    if (!hierarchySelection || !hierarchySelection.regionId) {
+    // Validate hierarchy selection based on hierarchy type
+    if (!hierarchySelection) {
       alert("يرجى اختيار التسلسل الإداري للتصويت");
+      return;
+    }
+    
+    // Validate based on hierarchy type
+    if (hierarchySelection.hierarchyType === 'ORIGINAL' && !hierarchySelection.regionId && !hierarchySelection.nationalLevelId) {
+      alert("يرجى اختيار الولاية أو المستوى القومي للتصويت");
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'EXPATRIATE' && !hierarchySelection.expatriateRegionId) {
+      alert("يرجى اختيار إقليم المغتربين للتصويت");
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'SECTOR' && !hierarchySelection.sectorRegionId && !hierarchySelection.sectorNationalLevelId) {
+      alert("يرجى اختيار قطاع للتصويت");
       return;
     }
 
@@ -161,7 +175,7 @@ export default function VotingPage() {
     }
 
     // Create voting data object
-    const votingData = {
+    const votingData: any = {
       title: newVotingTitle,
       description: newVotingDescription,
       options: newVotingOptions.map(opt => ({ text: opt })),
@@ -169,12 +183,47 @@ export default function VotingPage() {
       endDate,
       targetLevel: targetLevel as UserLevel,
       voteType,
-      // Add hierarchy targeting information
-      targetRegionId: hierarchySelection.regionId,
-      targetLocalityId: hierarchySelection.localityId,
-      targetAdminUnitId: hierarchySelection.adminUnitId,
-      targetDistrictId: hierarchySelection.districtId
     };
+    
+    // Add hierarchy targeting based on selection type
+    if (hierarchySelection.hierarchyType === 'ORIGINAL') {
+      if (hierarchySelection.nationalLevelId) {
+        votingData.targetNationalLevelId = hierarchySelection.nationalLevelId;
+      }
+      if (hierarchySelection.regionId) {
+        votingData.targetRegionId = hierarchySelection.regionId;
+      }
+      if (hierarchySelection.localityId) {
+        votingData.targetLocalityId = hierarchySelection.localityId;
+      }
+      if (hierarchySelection.adminUnitId) {
+        votingData.targetAdminUnitId = hierarchySelection.adminUnitId;
+      }
+      if (hierarchySelection.districtId) {
+        votingData.targetDistrictId = hierarchySelection.districtId;
+      }
+    } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
+      if (hierarchySelection.expatriateRegionId) {
+        votingData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
+      }
+    } else if (hierarchySelection.hierarchyType === 'SECTOR') {
+      if (hierarchySelection.sectorNationalLevelId) {
+        votingData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
+      }
+      if (hierarchySelection.sectorRegionId) {
+        votingData.targetSectorRegionId = hierarchySelection.sectorRegionId;
+      }
+      if (hierarchySelection.sectorLocalityId) {
+        votingData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
+      }
+      if (hierarchySelection.sectorAdminUnitId) {
+        votingData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
+      }
+      if (hierarchySelection.sectorDistrictId) {
+        votingData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
+      }
+    }
+    // GLOBAL type doesn't add any targeting - content is visible to everyone
 
     try {
       setLoading(true);
@@ -456,6 +505,7 @@ export default function VotingPage() {
                   initialSelection={hierarchySelection}
                   className="w-full"
                   disabled={user?.adminLevel !== 'ADMIN'}
+                  showGlobalOption={true}
                 />
               </div>
               <p className="mt-1 text-xs text-[var(--neutral-500)]">

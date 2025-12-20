@@ -4,13 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { apiClient } from '../../../context/apiContext';
-import { getUserHierarchySelection, getFormDataWithUserHierarchy, getUserHierarchyDisplayText } from '../../../utils/hierarchyUtils';
-
-
-interface HierarchyOption {
-  id: string;
-  name: string;
-}
+import { getUserHierarchySelection, getUserHierarchyDisplayText } from '../../../utils/hierarchyUtils';
+import HierarchySelector, { HierarchySelection } from '../../../components/HierarchySelector';
 
 export default function CreateSubscriptionPlan() {
   const { user, token } = useAuth();
@@ -23,11 +18,10 @@ export default function CreateSubscriptionPlan() {
     currency: 'SDG', // Default currency
     period: 'monthly', // Default period
     isDonation: false,
-    targetRegionId: '',
-    targetLocalityId: '',
-    targetAdminUnitId: '',
-    targetDistrictId: '',
   });
+
+  // Hierarchy selection state
+  const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
 
   // Auto-populate hierarchy based on user's level
   useEffect(() => {
@@ -35,175 +29,16 @@ export default function CreateSubscriptionPlan() {
       const userHierarchy = getUserHierarchySelection(user);
       if (userHierarchy) {
         console.log('Auto-populating hierarchy for user:', userHierarchy);
-        setFormData(prev => ({
-          ...prev,
-          targetRegionId: userHierarchy.regionId || '',
-          targetLocalityId: userHierarchy.localityId || '',
-          targetAdminUnitId: userHierarchy.adminUnitId || '',
-          targetDistrictId: userHierarchy.districtId || '',
-        }));
+        setHierarchySelection(userHierarchy);
       } else {
         console.log('No hierarchy found for user:', user);
       }
     }
   }, [user]);
 
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [hierarchyOptions, setHierarchyOptions] = useState({
-    regions: [] as HierarchyOption[],
-    localities: [] as HierarchyOption[],
-    adminUnits: [] as HierarchyOption[],
-    districts: [] as HierarchyOption[],
-  });
-  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
-
-  // Fetch hierarchy options
-  useEffect(() => {
-    const fetchHierarchyOptions = async () => {
-      try {
-        setLoadingHierarchy(true);
-        
-        // Fetch regions
-        const regions = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/regions`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }).then(res => res.json());
-        
-        setHierarchyOptions(prev => ({
-          ...prev,
-          regions: regions || []
-        }));
-        
-      } catch (err) {
-        console.error('Error fetching hierarchy options:', err);
-        setError('حدث خطأ أثناء تحميل خيارات التسلسل الهرمي');
-      } finally {
-        setLoadingHierarchy(false);
-      }
-    };
-    
-    if (token) {
-      fetchHierarchyOptions();
-    }
-  }, [token]);
-  
-  // Fetch localities when region changes
-  useEffect(() => {
-    const fetchLocalities = async () => {
-      if (!formData.targetRegionId) {
-        setHierarchyOptions(prev => ({
-          ...prev,
-          localities: [],
-          adminUnits: [],
-          districts: []
-        }));
-        return;
-      }
-      
-      try {
-        setLoadingHierarchy(true);
-        const localities = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/regions/${formData.targetRegionId}/localities`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }).then(res => res.json());
-        
-        setHierarchyOptions(prev => ({
-          ...prev,
-          localities: localities || [],
-          adminUnits: [],
-          districts: []
-        }));
-        
-      } catch (err) {
-        console.error('Error fetching localities:', err);
-      } finally {
-        setLoadingHierarchy(false);
-      }
-    };
-    
-    if (token && formData.targetRegionId) {
-      fetchLocalities();
-    }
-  }, [token, formData.targetRegionId]);
-  
-  // Fetch admin units when locality changes
-  useEffect(() => {
-    const fetchAdminUnits = async () => {
-      if (!formData.targetLocalityId) {
-        setHierarchyOptions(prev => ({
-          ...prev,
-          adminUnits: [],
-          districts: []
-        }));
-        return;
-      }
-      
-      try {
-        setLoadingHierarchy(true);
-        const adminUnits = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/localities/${formData.targetLocalityId}/admin-units`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }).then(res => res.json());
-        
-        setHierarchyOptions(prev => ({
-          ...prev,
-          adminUnits: adminUnits || [],
-          districts: []
-        }));
-        
-      } catch (err) {
-        console.error('Error fetching admin units:', err);
-      } finally {
-        setLoadingHierarchy(false);
-      }
-    };
-    
-    if (token && formData.targetLocalityId) {
-      fetchAdminUnits();
-    }
-  }, [token, formData.targetLocalityId]);
-  
-  // Fetch districts when admin unit changes
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      if (!formData.targetAdminUnitId) {
-        setHierarchyOptions(prev => ({
-          ...prev,
-          districts: []
-        }));
-        return;
-      }
-      
-      try {
-        setLoadingHierarchy(true);
-        const districts = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/admin-units/${formData.targetAdminUnitId}/districts`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }).then(res => res.json());
-        
-        setHierarchyOptions(prev => ({
-          ...prev,
-          districts: districts || []
-        }));
-        
-      } catch (err) {
-        console.error('Error fetching districts:', err);
-      } finally {
-        setLoadingHierarchy(false);
-      }
-    };
-    
-    if (token && formData.targetAdminUnitId) {
-      fetchDistricts();
-    }
-  }, [token, formData.targetAdminUnitId]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -228,7 +63,7 @@ export default function CreateSubscriptionPlan() {
     e.preventDefault();
     
     console.log('Form submission - formData:', formData);
-    console.log('User hierarchy:', user);
+    console.log('Hierarchy selection:', hierarchySelection);
     
     // Validate form
     if (!formData.title.trim()) {
@@ -241,11 +76,23 @@ export default function CreateSubscriptionPlan() {
       return;
     }
     
-    // Check if we have at least one hierarchy level selected
-    // For non-ADMIN users, this should be auto-populated, but let's validate anyway
-    if (!formData.targetRegionId) {
-      console.log('No targetRegionId found, formData:', formData);
-      setError('يرجى تحديد الولاية على الأقل');
+    // Validate hierarchy selection
+    if (!hierarchySelection) {
+      setError('يرجى اختيار مستوى الاستهداف');
+      return;
+    }
+    
+    // Validate based on hierarchy type
+    if (hierarchySelection.hierarchyType === 'ORIGINAL' && !hierarchySelection.regionId && !hierarchySelection.nationalLevelId) {
+      setError('يرجى اختيار الولاية أو المستوى القومي');
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'EXPATRIATE' && !hierarchySelection.expatriateRegionId) {
+      setError('يرجى اختيار إقليم المغتربين');
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'SECTOR' && !hierarchySelection.sectorRegionId && !hierarchySelection.sectorNationalLevelId) {
+      setError('يرجى اختيار قطاع');
       return;
     }
     
@@ -254,20 +101,56 @@ export default function CreateSubscriptionPlan() {
       setError(null);
       setSuccess(null);
       
-      // Clean up form data - convert empty strings to undefined for optional fields
-      const cleanedFormData = {
+      // Build subscription data with hierarchy targeting
+      const subscriptionData: any = {
         ...formData,
         price: formData.isDonation ? '0' : formData.price,
-        targetRegionId: formData.targetRegionId || undefined,
-        targetLocalityId: formData.targetLocalityId || undefined,
-        targetAdminUnitId: formData.targetAdminUnitId || undefined,
-        targetDistrictId: formData.targetDistrictId || undefined,
       };
       
-      console.log('Form data being sent:', cleanedFormData);
+      // Add hierarchy targeting based on selection type
+      if (hierarchySelection.hierarchyType === 'ORIGINAL') {
+        if (hierarchySelection.nationalLevelId) {
+          subscriptionData.targetNationalLevelId = hierarchySelection.nationalLevelId;
+        }
+        if (hierarchySelection.regionId) {
+          subscriptionData.targetRegionId = hierarchySelection.regionId;
+        }
+        if (hierarchySelection.localityId) {
+          subscriptionData.targetLocalityId = hierarchySelection.localityId;
+        }
+        if (hierarchySelection.adminUnitId) {
+          subscriptionData.targetAdminUnitId = hierarchySelection.adminUnitId;
+        }
+        if (hierarchySelection.districtId) {
+          subscriptionData.targetDistrictId = hierarchySelection.districtId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
+        if (hierarchySelection.expatriateRegionId) {
+          subscriptionData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'SECTOR') {
+        if (hierarchySelection.sectorNationalLevelId) {
+          subscriptionData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
+        }
+        if (hierarchySelection.sectorRegionId) {
+          subscriptionData.targetSectorRegionId = hierarchySelection.sectorRegionId;
+        }
+        if (hierarchySelection.sectorLocalityId) {
+          subscriptionData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
+        }
+        if (hierarchySelection.sectorAdminUnitId) {
+          subscriptionData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
+        }
+        if (hierarchySelection.sectorDistrictId) {
+          subscriptionData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
+        }
+      }
+      // GLOBAL type doesn't add any targeting - content is visible to everyone
+      
+      console.log('Subscription data being sent:', subscriptionData);
       
       // Create the subscription plan
-      await apiClient.subscriptions.createSubscriptionPlan(token!, cleanedFormData);
+      await apiClient.subscriptions.createSubscriptionPlan(token!, subscriptionData);
       
       setSuccess('تم إنشاء الاشتراك بنجاح');
       
@@ -418,16 +301,20 @@ export default function CreateSubscriptionPlan() {
               </select>
             </div>
             
-            {/* Hierarchy targeting fields */}
+            {/* Hierarchy targeting */}
             <div className="space-y-4 rounded-md border border-[var(--neutral-200)] bg-[var(--neutral-50)] p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-[var(--neutral-700)]">
-                  تحديد النطاق الجغرافي
+                  تحديد الاستهداف *
                 </h3>
                 <div className="text-sm text-[var(--neutral-600)]">
                   <span className="font-medium">النطاق الحالي:</span> {getUserHierarchyDisplayText(user)}
                 </div>
               </div>
+              
+              <p className="text-sm text-[var(--neutral-500)]">
+                اختر من سيرى هذا {formData.isDonation ? 'طلب التبرع' : 'الاشتراك'}. يمكنك استهداف منطقة جغرافية، أو المغتربين، أو قطاع معين، أو جعله عالمياً للجميع.
+              </p>
               
               {user?.adminLevel !== 'ADMIN' && (
                 <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
@@ -437,90 +324,39 @@ export default function CreateSubscriptionPlan() {
                 </div>
               )}
               
-              <div>
-                <label htmlFor="targetRegionId" className="mb-1 block font-medium text-[var(--neutral-700)]">
-                  الولاية *
-                </label>
-                <select
-                  id="targetRegionId"
-                  name="targetRegionId"
-                  value={formData.targetRegionId}
-                  onChange={handleChange}
-                  className={`w-full rounded-md border border-[var(--neutral-300)] p-2 focus:border-[var(--primary-500)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-500)] ${
-                    user?.adminLevel !== 'ADMIN' ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  required
-                  disabled={user?.adminLevel !== 'ADMIN'}
-                >
-                  <option value="">اختر الولاية</option>
-                  {hierarchyOptions.regions.map(region => (
-                    <option key={region.id} value={region.id}>{region.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="targetLocalityId" className="mb-1 block font-medium text-[var(--neutral-700)]">
-                  المحلية (اختياري)
-                </label>
-                <select
-                  id="targetLocalityId"
-                  name="targetLocalityId"
-                  value={formData.targetLocalityId}
-                  onChange={handleChange}
-                  className={`w-full rounded-md border border-[var(--neutral-300)] p-2 focus:border-[var(--primary-500)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-500)] ${
-                    user?.adminLevel !== 'ADMIN' ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  disabled={user?.adminLevel !== 'ADMIN' || !formData.targetRegionId || loadingHierarchy || hierarchyOptions.localities.length === 0}
-                >
-                  <option value="">اختر المحلية</option>
-                  {hierarchyOptions.localities.map(locality => (
-                    <option key={locality.id} value={locality.id}>{locality.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="targetAdminUnitId" className="mb-1 block font-medium text-[var(--neutral-700)]">
-                  الوحدة الإدارية (اختياري)
-                </label>
-                <select
-                  id="targetAdminUnitId"
-                  name="targetAdminUnitId"
-                  value={formData.targetAdminUnitId}
-                  onChange={handleChange}
-                  className={`w-full rounded-md border border-[var(--neutral-300)] p-2 focus:border-[var(--primary-500)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-500)] ${
-                    user?.adminLevel !== 'ADMIN' ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  disabled={user?.adminLevel !== 'ADMIN' || !formData.targetLocalityId || loadingHierarchy || hierarchyOptions.adminUnits.length === 0}
-                >
-                  <option value="">اختر الوحدة الإدارية</option>
-                  {hierarchyOptions.adminUnits.map(adminUnit => (
-                    <option key={adminUnit.id} value={adminUnit.id}>{adminUnit.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="targetDistrictId" className="mb-1 block font-medium text-[var(--neutral-700)]">
-                  الحي (اختياري)
-                </label>
-                <select
-                  id="targetDistrictId"
-                  name="targetDistrictId"
-                  value={formData.targetDistrictId}
-                  onChange={handleChange}
-                  className={`w-full rounded-md border border-[var(--neutral-300)] p-2 focus:border-[var(--primary-500)] focus:outline-none focus:ring-1 focus:ring-[var(--primary-500)] ${
-                    user?.adminLevel !== 'ADMIN' ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  disabled={user?.adminLevel !== 'ADMIN' || !formData.targetAdminUnitId || loadingHierarchy || hierarchyOptions.districts.length === 0}
-                >
-                  <option value="">اختر الحي</option>
-                  {hierarchyOptions.districts.map(district => (
-                    <option key={district.id} value={district.id}>{district.name}</option>
-                  ))}
-                </select>
-              </div>
+              <HierarchySelector
+                onSelectionChange={setHierarchySelection}
+                initialSelection={hierarchySelection}
+                showGlobalOption={true}
+                className="bg-white p-4 rounded-lg border border-[var(--neutral-200)]"
+                disabled={user?.adminLevel !== 'ADMIN'}
+              />
+
+              {hierarchySelection && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>الاستهداف المحدد:</strong>{' '}
+                    {hierarchySelection.hierarchyType === 'GLOBAL' && 'عالمي - سيراه جميع المستخدمين'}
+                    {hierarchySelection.hierarchyType === 'ORIGINAL' && `جغرافي - ${
+                      hierarchySelection.districtName || 
+                      hierarchySelection.adminUnitName || 
+                      hierarchySelection.localityName || 
+                      hierarchySelection.regionName || 
+                      hierarchySelection.nationalLevelName || 
+                      'غير محدد'
+                    }`}
+                    {hierarchySelection.hierarchyType === 'EXPATRIATE' && `المغتربين - ${hierarchySelection.expatriateRegionName || 'غير محدد'}`}
+                    {hierarchySelection.hierarchyType === 'SECTOR' && `القطاع - ${
+                      hierarchySelection.sectorDistrictName || 
+                      hierarchySelection.sectorAdminUnitName || 
+                      hierarchySelection.sectorLocalityName || 
+                      hierarchySelection.sectorRegionName || 
+                      hierarchySelection.sectorNationalLevelName || 
+                      'غير محدد'
+                    }`}
+                  </p>
+                </div>
+              )}
             </div>
             
           </div>

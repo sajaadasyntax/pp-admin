@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../config/api';
+import HierarchySelector, { HierarchySelection } from '../../../components/HierarchySelector';
 
 type SurveyQuestion = {
   id: number;
@@ -18,17 +19,6 @@ type SurveyFormData = {
   type: string;
   dueDate: string;
   questions: SurveyQuestion[];
-  targetRegionId: string;
-  targetLocalityId: string;
-  targetAdminUnitId: string;
-  targetDistrictId: string;
-};
-
-type HierarchyOptions = {
-  regions: any[];
-  localities: any[];
-  adminUnits: any[];
-  districts: any[];
 };
 
 export default function CreateSurveyPage() {
@@ -46,44 +36,11 @@ export default function CreateSurveyPage() {
     dueDate: '',
     questions: [
       { id: 1, text: '', type: 'text', options: [] as string[] }
-    ],
-    targetRegionId: '',
-    targetLocalityId: '',
-    targetAdminUnitId: '',
-    targetDistrictId: ''
+    ]
   });
 
-  const [hierarchyOptions, setHierarchyOptions] = useState<HierarchyOptions>({
-    regions: [],
-    localities: [],
-    adminUnits: [],
-    districts: []
-  });
-
-  // Fetch hierarchy options
-  useEffect(() => {
-    const fetchHierarchyOptions = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/hierarchy/full-hierarchy`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setHierarchyOptions({ regions: data, localities: [], adminUnits: [], districts: [] });
-        }
-      } catch (err) {
-        console.error('Error fetching hierarchy options:', err);
-      }
-    };
-
-    if (token) {
-      fetchHierarchyOptions();
-    }
-  }, [token]);
+  // Hierarchy selection state
+  const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -153,8 +110,28 @@ export default function CreateSurveyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.targetRegionId) {
+    if (!formData.title || !formData.description) {
       setError('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    // Validate hierarchy selection
+    if (!hierarchySelection) {
+      setError('يرجى اختيار مستوى الاستهداف');
+      return;
+    }
+
+    // Validate based on hierarchy type
+    if (hierarchySelection.hierarchyType === 'ORIGINAL' && !hierarchySelection.regionId && !hierarchySelection.nationalLevelId) {
+      setError('يرجى اختيار الولاية أو المستوى القومي للاستبيان');
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'EXPATRIATE' && !hierarchySelection.expatriateRegionId) {
+      setError('يرجى اختيار إقليم المغتربين للاستبيان');
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'SECTOR' && !hierarchySelection.sectorRegionId && !hierarchySelection.sectorNationalLevelId) {
+      setError('يرجى اختيار قطاع للاستبيان');
       return;
     }
 
@@ -167,7 +144,7 @@ export default function CreateSurveyPage() {
       setLoading(true);
       setError(null);
 
-      const surveyData = {
+      const surveyData: any = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
@@ -177,13 +154,49 @@ export default function CreateSurveyPage() {
           id: q.id,
           text: q.text,
           type: q.type,
-          options: q.type === 'multiple_choice' ? q.options.filter(opt => opt.trim()) : []
+          options: q.type === 'multiple_choice' || q.type === 'single_choice' ? q.options.filter(opt => opt.trim()) : []
         })),
-        targetRegionId: formData.targetRegionId,
-        targetLocalityId: formData.targetLocalityId || null,
-        targetAdminUnitId: formData.targetAdminUnitId || null,
-        targetDistrictId: formData.targetDistrictId || null
       };
+
+      // Add hierarchy targeting based on selection type
+      if (hierarchySelection.hierarchyType === 'ORIGINAL') {
+        if (hierarchySelection.nationalLevelId) {
+          surveyData.targetNationalLevelId = hierarchySelection.nationalLevelId;
+        }
+        if (hierarchySelection.regionId) {
+          surveyData.targetRegionId = hierarchySelection.regionId;
+        }
+        if (hierarchySelection.localityId) {
+          surveyData.targetLocalityId = hierarchySelection.localityId;
+        }
+        if (hierarchySelection.adminUnitId) {
+          surveyData.targetAdminUnitId = hierarchySelection.adminUnitId;
+        }
+        if (hierarchySelection.districtId) {
+          surveyData.targetDistrictId = hierarchySelection.districtId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
+        if (hierarchySelection.expatriateRegionId) {
+          surveyData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
+        }
+      } else if (hierarchySelection.hierarchyType === 'SECTOR') {
+        if (hierarchySelection.sectorNationalLevelId) {
+          surveyData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
+        }
+        if (hierarchySelection.sectorRegionId) {
+          surveyData.targetSectorRegionId = hierarchySelection.sectorRegionId;
+        }
+        if (hierarchySelection.sectorLocalityId) {
+          surveyData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
+        }
+        if (hierarchySelection.sectorAdminUnitId) {
+          surveyData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
+        }
+        if (hierarchySelection.sectorDistrictId) {
+          surveyData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
+        }
+      }
+      // GLOBAL type doesn't add any targeting - content is visible to everyone
 
       const response = await fetch(`${apiUrl}/content/surveys`, {
         method: 'POST',
@@ -305,39 +318,47 @@ export default function CreateSurveyPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--neutral-700)] mb-2">
-                الولاية *
+            {/* Hierarchy Targeting */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-[var(--neutral-700)]">
+                الاستهداف *
               </label>
-              <select
-                name="targetRegionId"
-                value={formData.targetRegionId}
-                onChange={handleInputChange}
-                className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 focus:border-[var(--primary-500)] focus:outline-none"
-                required
-              >
-                <option value="">اختر الولاية</option>
-                {hierarchyOptions.regions.map((region: any) => (
-                  <option key={region.id} value={region.id}>{region.name}</option>
-                ))}
-              </select>
-            </div>
+              <p className="text-sm text-[var(--neutral-500)]">
+                اختر من سيرى هذا الاستبيان. يمكنك استهداف منطقة جغرافية، أو المغتربين، أو قطاع معين، أو جعله عالمياً للجميع.
+              </p>
+              
+              <HierarchySelector
+                onSelectionChange={setHierarchySelection}
+                initialSelection={hierarchySelection}
+                showGlobalOption={true}
+                className="bg-gray-50 p-4 rounded-lg"
+              />
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--neutral-700)] mb-2">
-                المحلية
-              </label>
-              <select
-                name="targetLocalityId"
-                value={formData.targetLocalityId}
-                onChange={handleInputChange}
-                className="w-full rounded-md border border-[var(--neutral-300)] px-3 py-2 focus:border-[var(--primary-500)] focus:outline-none"
-              >
-                <option value="">اختر المحلية (اختياري)</option>
-                {hierarchyOptions.localities.map((locality: any) => (
-                  <option key={locality.id} value={locality.id}>{locality.name}</option>
-                ))}
-              </select>
+              {hierarchySelection && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>الاستهداف المحدد:</strong>{' '}
+                    {hierarchySelection.hierarchyType === 'GLOBAL' && 'عالمي - سيراه جميع المستخدمين'}
+                    {hierarchySelection.hierarchyType === 'ORIGINAL' && `جغرافي - ${
+                      hierarchySelection.districtName || 
+                      hierarchySelection.adminUnitName || 
+                      hierarchySelection.localityName || 
+                      hierarchySelection.regionName || 
+                      hierarchySelection.nationalLevelName || 
+                      'غير محدد'
+                    }`}
+                    {hierarchySelection.hierarchyType === 'EXPATRIATE' && `المغتربين - ${hierarchySelection.expatriateRegionName || 'غير محدد'}`}
+                    {hierarchySelection.hierarchyType === 'SECTOR' && `القطاع - ${
+                      hierarchySelection.sectorDistrictName || 
+                      hierarchySelection.sectorAdminUnitName || 
+                      hierarchySelection.sectorLocalityName || 
+                      hierarchySelection.sectorRegionName || 
+                      hierarchySelection.sectorNationalLevelName || 
+                      'غير محدد'
+                    }`}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

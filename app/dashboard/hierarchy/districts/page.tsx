@@ -155,10 +155,20 @@ export default function DistrictsPage() {
   const [selectedDistrictForUsers, setSelectedDistrictForUsers] = useState<District | null>(null);
   const [districtHierarchy, setDistrictHierarchy] = useState<{regionId: string, localityId: string, adminUnitId: string} | null>(null);
   const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<UserForManagement[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [submittingUsers, setSubmittingUsers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // New user form state
+  const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    mobileNumber: '',
+    password: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    fullName: ''
+  });
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -452,62 +462,18 @@ export default function DistrictsPage() {
         
         setCurrentUsers(districtUsers);
       } else if (districtUsersResponse.status === 403) {
-        // User doesn't have permission to view users
         console.warn('No permission to view district users');
         setCurrentUsers([]);
       } else if (districtUsersResponse.status === 404) {
-        // Endpoint not found or district doesn't exist
         console.warn('District users endpoint not found or district does not exist');
         setCurrentUsers([]);
       } else {
-        // Other errors - log and set empty
         console.error('Failed to fetch district users:', districtUsersResponse.status, districtUsersResponse.statusText);
         setCurrentUsers([]);
-      }
-      
-      // Get available users from the same admin unit using hierarchical endpoint
-      const adminUnitUsersResponse = await fetch(`${apiUrl}/hierarchical-users/users/admin-units/${district.adminUnitId}/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (adminUnitUsersResponse.ok) {
-        const adminUnitUsersData = await adminUnitUsersResponse.json();
-        const allAdminUnitUsers = Array.isArray(adminUnitUsersData) ? adminUnitUsersData : adminUnitUsersData?.users || [];
-        
-        // Filter to only users not in this district
-        const availableUsersList = allAdminUnitUsers
-          .filter((u: any) => u.districtId !== district.id)
-          .map((u: any) => ({
-            id: u.id,
-            name: u.profile?.firstName && u.profile?.lastName
-              ? `${u.profile.firstName} ${u.profile.lastName}`
-              : u.memberDetails?.fullName || u.email || u.mobileNumber,
-            email: u.email,
-            mobileNumber: u.mobileNumber,
-            adminLevel: u.adminLevel,
-            districtId: u.districtId,
-            district: u.district
-          }));
-        
-        setAvailableUsers(availableUsersList);
-      } else if (adminUnitUsersResponse.status === 403) {
-        // User doesn't have permission to view available users
-        setAvailableUsers([]);
-      } else if (adminUnitUsersResponse.status === 404) {
-        // Endpoint not found or admin unit doesn't exist
-        console.warn('Admin unit users endpoint not found or admin unit does not exist');
-        setAvailableUsers([]);
-      } else {
-        // Other errors - log and set empty
-        console.error('Failed to fetch admin unit users:', adminUnitUsersResponse.status, adminUnitUsersResponse.statusText);
-        setAvailableUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
       setCurrentUsers([]);
-      setAvailableUsers([]);
       alert('فشل في تحميل المستخدمين');
     } finally {
       setLoadingUsers(false);
@@ -519,6 +485,8 @@ export default function DistrictsPage() {
     setSelectedDistrictForUsers(district);
     setShowUserModal(true);
     setSearchQuery('');
+    setShowAddUserForm(false);
+    setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
     
     // Fetch hierarchy info for the district
     try {
@@ -557,23 +525,35 @@ export default function DistrictsPage() {
     fetchUsersForDistrict(district);
   };
 
-  // Add user to district
-  const handleAddUserToDistrict = async (userId: string) => {
+  // Create new user and add to district
+  const handleCreateNewUser = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedDistrictForUsers || !token || !districtHierarchy) {
       alert('خطأ في بيانات الحي');
       return;
     }
     
+    if (!newUserData.mobileNumber || !newUserData.password) {
+      alert('الرجاء إدخال رقم الهاتف وكلمة المرور');
+      return;
+    }
+    
     setSubmittingUsers(true);
     try {
-      const response = await fetch(`${apiUrl}/users/${userId}/hierarchy`, {
-        method: 'PUT',
+      // Create the new user with hierarchy data
+      const response = await fetch(`${apiUrl}/auth/register`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          hierarchyLevel: 'district',
+          mobileNumber: newUserData.mobileNumber,
+          password: newUserData.password,
+          email: newUserData.email || undefined,
+          firstName: newUserData.firstName || undefined,
+          lastName: newUserData.lastName || undefined,
+          fullName: newUserData.fullName || undefined,
           regionId: districtHierarchy.regionId,
           localityId: districtHierarchy.localityId,
           adminUnitId: districtHierarchy.adminUnitId,
@@ -582,16 +562,18 @@ export default function DistrictsPage() {
       });
 
       if (response.ok) {
-        alert('تم إضافة المستخدم إلى الحي بنجاح');
+        alert('تم إنشاء المستخدم وإضافته إلى الحي بنجاح');
+        setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
+        setShowAddUserForm(false);
         await fetchUsersForDistrict(selectedDistrictForUsers);
         if (selectedAdminUnit) fetchDistricts(selectedAdminUnit);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || 'فشل في إضافة المستخدم');
+        alert(errorData.error || errorData.message || 'فشل في إنشاء المستخدم');
       }
     } catch (error) {
-      console.error('Error adding user to district:', error);
-      alert('حدث خطأ أثناء إضافة المستخدم');
+      console.error('Error creating user:', error);
+      alert('حدث خطأ أثناء إنشاء المستخدم');
     } finally {
       setSubmittingUsers(false);
     }

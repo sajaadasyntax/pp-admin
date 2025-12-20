@@ -209,9 +209,23 @@ export default function BulletinPage() {
       return;
     }
     
-    // Validate hierarchy selection
-    if (!hierarchySelection || !hierarchySelection.regionId) {
+    // Validate hierarchy selection based on hierarchy type
+    if (!hierarchySelection) {
+      alert("يرجى اختيار التسلسل الإداري للنشرة");
+      return;
+    }
+    
+    // Validate based on hierarchy type
+    if (hierarchySelection.hierarchyType === 'ORIGINAL' && !hierarchySelection.regionId) {
       alert("يرجى اختيار الولاية (المنطقة) للنشرة");
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'EXPATRIATE' && !hierarchySelection.expatriateRegionId) {
+      alert("يرجى اختيار إقليم المغتربين للنشرة");
+      return;
+    }
+    if (hierarchySelection.hierarchyType === 'SECTOR' && !hierarchySelection.sectorRegionId && !hierarchySelection.sectorNationalLevelId) {
+      alert("يرجى اختيار قطاع للنشرة");
       return;
     }
     
@@ -221,53 +235,53 @@ export default function BulletinPage() {
       // Log hierarchy selection for debugging
       console.log("Hierarchy selection:", hierarchySelection);
       
-      // Get the first region from the server if no hierarchy selection is available
-      let targetRegionId = hierarchySelection?.regionId || null;
-      
-      // Make sure we always have a valid region ID
-      if (!targetRegionId) {
-        // Get the first available region ID from the server
-        try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/hierarchy-management/regions`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const regions = await response.json();
-            if (regions && regions.length > 0) {
-              targetRegionId = regions[0].id;
-              console.log("Using default region ID:", targetRegionId);
-            }
-          }
-        } catch (err) {
-          console.error("Error getting default region:", err);
-        }
-        
-        // If we still don't have a region ID, inform the user and exit
-        if (!targetRegionId) {
-          alert("خطأ: لم يتم اختيار الولاية. يرجى اختيار ولاية للنشرة.");
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // Prepare form data - ALWAYS include targetRegionId as a string
-      const bulletinData = {
+      // Prepare form data based on hierarchy type
+      const bulletinData: any = {
         title: bulletinTitle,
         content: bulletinContent,
         date: publishDate,
         published: true,
-        
-        // Add targetRegionId directly here - VERY IMPORTANT
-        targetRegionId: targetRegionId,
-        
-        // Only include lower levels if they exist
-        ...(hierarchySelection?.localityId ? { targetLocalityId: hierarchySelection.localityId } : {}),
-        ...(hierarchySelection?.adminUnitId ? { targetAdminUnitId: hierarchySelection.adminUnitId } : {}),
-        ...(hierarchySelection?.districtId ? { targetDistrictId: hierarchySelection.districtId } : {})
       };
+      
+      // Add hierarchy targeting based on selection type
+      if (hierarchySelection?.hierarchyType === 'ORIGINAL') {
+        if (hierarchySelection.nationalLevelId) {
+          bulletinData.targetNationalLevelId = hierarchySelection.nationalLevelId;
+        }
+        if (hierarchySelection.regionId) {
+          bulletinData.targetRegionId = hierarchySelection.regionId;
+        }
+        if (hierarchySelection.localityId) {
+          bulletinData.targetLocalityId = hierarchySelection.localityId;
+        }
+        if (hierarchySelection.adminUnitId) {
+          bulletinData.targetAdminUnitId = hierarchySelection.adminUnitId;
+        }
+        if (hierarchySelection.districtId) {
+          bulletinData.targetDistrictId = hierarchySelection.districtId;
+        }
+      } else if (hierarchySelection?.hierarchyType === 'EXPATRIATE') {
+        if (hierarchySelection.expatriateRegionId) {
+          bulletinData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
+        }
+      } else if (hierarchySelection?.hierarchyType === 'SECTOR') {
+        if (hierarchySelection.sectorNationalLevelId) {
+          bulletinData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
+        }
+        if (hierarchySelection.sectorRegionId) {
+          bulletinData.targetSectorRegionId = hierarchySelection.sectorRegionId;
+        }
+        if (hierarchySelection.sectorLocalityId) {
+          bulletinData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
+        }
+        if (hierarchySelection.sectorAdminUnitId) {
+          bulletinData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
+        }
+        if (hierarchySelection.sectorDistrictId) {
+          bulletinData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
+        }
+      }
+      // GLOBAL type doesn't add any targeting - content is visible to everyone
       
       // Log the bulletin data before sending
       console.log("Bulletin data to submit:", bulletinData);
@@ -508,8 +522,8 @@ export default function BulletinPage() {
                 <div className="border border-[var(--neutral-300)] rounded-md p-3">
                   <HierarchySelector
                     onSelectionChange={(selection) => {
-                      // Only update if we have valid data and a regionId
-                      if (selection && selection.regionId) {
+                      // Update if we have valid data based on hierarchy type
+                      if (selection) {
                         console.log("Updating hierarchy selection:", selection);
                         setHierarchySelection(selection);
                       } else {
@@ -519,6 +533,7 @@ export default function BulletinPage() {
                     initialSelection={hierarchySelection}
                     className="w-full"
                     disabled={user?.adminLevel !== 'ADMIN'}
+                    showGlobalOption={true}
                   />
                 </div>
                 <p className="mt-1 text-xs text-[var(--neutral-500)]">
