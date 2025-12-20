@@ -88,6 +88,14 @@ export default function HierarchyPage() {
       count: stats?.districts || 0,
       color: 'from-orange-400 to-orange-600',
       description: 'إدارة الأحياء والمناطق السكنية'
+    },
+    {
+      title: 'القطاعات',
+      icon: '📊',
+      href: '/dashboard/hierarchy/sectors',
+      count: 4,
+      color: 'from-indigo-400 to-indigo-600',
+      description: 'إدارة القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي)'
     }
   ];
 
