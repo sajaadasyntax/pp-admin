@@ -327,7 +327,9 @@ export default function ExpatriateRegionsPage() {
       
       if (currentUsersResponse.ok) {
         const usersData = await currentUsersResponse.json();
-        const allUsers = Array.isArray(usersData) ? usersData : usersData.data || [];
+        const allUsers = Array.isArray(usersData) 
+          ? usersData 
+          : usersData.data || usersData.users || [];
         
         const regionUsers = allUsers.map((u: any) => ({
           id: u.id,

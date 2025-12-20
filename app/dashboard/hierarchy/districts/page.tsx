@@ -447,7 +447,12 @@ export default function DistrictsPage() {
       
       if (districtUsersResponse.ok) {
         const districtUsersData = await districtUsersResponse.json();
-        const districtUsers = (Array.isArray(districtUsersData) ? districtUsersData : districtUsersData?.users || [])
+        // The API returns { success: true, data: users, count: number }
+        const usersArray = Array.isArray(districtUsersData) 
+          ? districtUsersData 
+          : districtUsersData?.data || districtUsersData?.users || [];
+        
+        const districtUsers = usersArray
           .map((u: any) => ({
             id: u.id,
             name: u.profile?.firstName && u.profile?.lastName
