@@ -90,10 +90,20 @@ export default function ExpatriateRegionsPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedRegionForUsers, setSelectedRegionForUsers] = useState<ExpatriateRegion | null>(null);
   const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<UserForManagement[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [submittingUsers, setSubmittingUsers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // New user form state
+  const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    mobileNumber: '',
+    password: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    fullName: ''
+  });
   
   // Sub-levels state
   const [showSubLevels, setShowSubLevels] = useState<string | null>(null);
@@ -331,33 +341,6 @@ export default function ExpatriateRegionsPage() {
         }));
         
         setCurrentUsers(regionUsers);
-        
-        // Get available users (all users not in this region)
-        const allUsersResponse = await fetch(`${apiUrl}/users?page=1&limit=1000`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (allUsersResponse.ok) {
-          const allUsersData = await allUsersResponse.json();
-          const allUsersList = Array.isArray(allUsersData) ? allUsersData : allUsersData.users || allUsersData.data || [];
-          
-          const availableUsersList = allUsersList
-            .filter((u: any) => u.expatriateRegionId !== region.id)
-            .map((u: any) => ({
-              id: u.id,
-              name: u.profile?.firstName && u.profile?.lastName
-                ? `${u.profile.firstName} ${u.profile.lastName}`
-                : u.memberDetails?.fullName || u.email || u.mobileNumber,
-              email: u.email,
-              mobileNumber: u.mobileNumber,
-              adminLevel: u.adminLevel,
-              expatriateRegionId: u.expatriateRegionId
-            }));
-          
-          setAvailableUsers(availableUsersList);
-        }
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -372,35 +355,58 @@ export default function ExpatriateRegionsPage() {
     setSelectedRegionForUsers(region);
     setShowUserModal(true);
     setSearchQuery('');
+    setShowAddUserForm(false);
+    setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
     fetchUsersForRegion(region);
   };
 
-  // Add user to expatriate region
-  const handleAddUserToRegion = async (userId: string) => {
-    if (!selectedRegionForUsers || !token) return;
+  // Create new user and add to expatriate region
+  const handleCreateNewUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRegionForUsers || !token) {
+      alert('خطأ في بيانات القطاع');
+      return;
+    }
+    
+    if (!newUserData.mobileNumber || !newUserData.password) {
+      alert('الرجاء إدخال رقم الهاتف وكلمة المرور');
+      return;
+    }
     
     setSubmittingUsers(true);
     try {
-      const response = await fetch(`${apiUrl}/expatriate-hierarchy/users/${userId}/expatriate-region`, {
-        method: 'PUT',
+      // Create the new user with expatriate region
+      const response = await fetch(`${apiUrl}/auth/register`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ expatriateRegionId: selectedRegionForUsers.id }),
+        body: JSON.stringify({
+          mobileNumber: newUserData.mobileNumber,
+          password: newUserData.password,
+          email: newUserData.email || undefined,
+          firstName: newUserData.firstName || undefined,
+          lastName: newUserData.lastName || undefined,
+          fullName: newUserData.fullName || undefined,
+          expatriateRegionId: selectedRegionForUsers.id,
+          activeHierarchy: 'EXPATRIATE'
+        }),
       });
 
       if (response.ok) {
-        alert('تم إضافة المستخدم إلى القطاع بنجاح');
+        alert('تم إنشاء المستخدم وإضافته إلى القطاع بنجاح');
+        setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
+        setShowAddUserForm(false);
         await fetchUsersForRegion(selectedRegionForUsers);
         fetchExpatriateRegions();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || 'فشل في إضافة المستخدم');
+        alert(errorData.error || errorData.message || 'فشل في إنشاء المستخدم');
       }
     } catch (error) {
-      console.error('Error adding user to region:', error);
-      alert('حدث خطأ أثناء إضافة المستخدم');
+      console.error('Error creating user:', error);
+      alert('حدث خطأ أثناء إنشاء المستخدم');
     } finally {
       setSubmittingUsers(false);
     }
@@ -870,7 +876,8 @@ export default function ExpatriateRegionsPage() {
                     setSelectedRegionForUsers(null);
                     setSearchQuery('');
                     setCurrentUsers([]);
-                    setAvailableUsers([]);
+                    setShowAddUserForm(false);
+                    setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -880,115 +887,179 @@ export default function ExpatriateRegionsPage() {
                 </button>
               </div>
 
-              {/* Search */}
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="بحث عن مستخدم..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Toggle Tabs */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setShowAddUserForm(false)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    !showAddUserForm
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  المستخدمون الحاليون ({currentUsers.length})
+                </button>
+                <button
+                  onClick={() => setShowAddUserForm(true)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    showAddUserForm
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  + إضافة مستخدم جديد
+                </button>
               </div>
 
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Current Users */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                      المستخدمون الحاليون ({currentUsers.filter(u => 
-                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.mobileNumber.includes(searchQuery) || 
-                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                      ).length})
-                    </h3>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {currentUsers
-                        .filter(u => 
-                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.mobileNumber.includes(searchQuery) || 
-                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                        )
-                        .map((user) => (
-                          <div
-                            key={user.id}
-                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between"
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{user.name}</div>
-                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
-                              {user.email && (
-                                <div className="text-xs text-gray-400">{user.email}</div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleRemoveUserFromRegion(user.id)}
-                              disabled={submittingUsers}
-                              className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
-                            >
-                              إزالة
-                            </button>
-                          </div>
-                        ))}
-                      {currentUsers.filter(u => 
-                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.mobileNumber.includes(searchQuery) || 
-                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                      ).length === 0 && (
-                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون في هذا القطاع</p>
-                      )}
+              ) : showAddUserForm ? (
+                /* Add New User Form */
+                <form onSubmit={handleCreateNewUser} className="space-y-4">
+                  <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-cyan-800">
+                      سيتم إنشاء مستخدم جديد وإضافته مباشرة إلى هذا القطاع
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف *</label>
+                      <input
+                        type="text"
+                        value={newUserData.mobileNumber}
+                        onChange={(e) => setNewUserData({ ...newUserData, mobileNumber: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                        placeholder="مثال: 0912345678"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">كلمة المرور *</label>
+                      <input
+                        type="password"
+                        value={newUserData.password}
+                        onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                        placeholder="كلمة المرور"
+                        required
+                      />
                     </div>
                   </div>
-
-                  {/* Available Users */}
+                  
                   <div>
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
-                      المستخدمون المتاحون ({availableUsers.filter(u => 
-                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.mobileNumber.includes(searchQuery) || 
-                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                      ).length})
-                    </h3>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {availableUsers
-                        .filter(u => 
-                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.mobileNumber.includes(searchQuery) || 
-                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                        )
-                        .map((user) => (
-                          <div
-                            key={user.id}
-                            className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between hover:border-blue-300"
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{user.name}</div>
-                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
-                              {user.email && (
-                                <div className="text-xs text-gray-400">{user.email}</div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleAddUserToRegion(user.id)}
-                              disabled={submittingUsers}
-                              className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-                            >
-                              إضافة
-                            </button>
-                          </div>
-                        ))}
-                      {availableUsers.filter(u => 
-                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.mobileNumber.includes(searchQuery) || 
-                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                      ).length === 0 && (
-                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون للإضافة</p>
-                      )}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
+                    <input
+                      type="email"
+                      value={newUserData.email}
+                      onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                      placeholder="example@email.com"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">الاسم الأول</label>
+                      <input
+                        type="text"
+                        value={newUserData.firstName}
+                        onChange={(e) => setNewUserData({ ...newUserData, firstName: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                        placeholder="الاسم الأول"
+                      />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">اسم العائلة</label>
+                      <input
+                        type="text"
+                        value={newUserData.lastName}
+                        onChange={(e) => setNewUserData({ ...newUserData, lastName: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                        placeholder="اسم العائلة"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">الاسم الكامل</label>
+                    <input
+                      type="text"
+                      value={newUserData.fullName}
+                      onChange={(e) => setNewUserData({ ...newUserData, fullName: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                      placeholder="الاسم الكامل (اختياري)"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="submit"
+                      disabled={submittingUsers}
+                      className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                    >
+                      {submittingUsers ? 'جاري الإنشاء...' : 'إنشاء وإضافة المستخدم'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddUserForm(false)}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Current Users List */
+                <div>
+                  {/* Search */}
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="بحث عن مستخدم..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {currentUsers
+                      .filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      )
+                      .map((user) => (
+                        <div
+                          key={user.id}
+                          className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{user.name}</div>
+                            <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                            {user.email && (
+                              <div className="text-xs text-gray-400">{user.email}</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleRemoveUserFromRegion(user.id)}
+                            disabled={submittingUsers}
+                            className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                          >
+                            إزالة
+                          </button>
+                        </div>
+                      ))}
+                    {currentUsers.filter(u => 
+                      !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      u.mobileNumber.includes(searchQuery) || 
+                      (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                    ).length === 0 && (
+                      <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون في هذا القطاع</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1000,7 +1071,8 @@ export default function ExpatriateRegionsPage() {
                     setSelectedRegionForUsers(null);
                     setSearchQuery('');
                     setCurrentUsers([]);
-                    setAvailableUsers([]);
+                    setShowAddUserForm(false);
+                    setNewUserData({ mobileNumber: '', password: '', email: '', firstName: '', lastName: '', fullName: '' });
                   }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
