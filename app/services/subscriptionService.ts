@@ -17,10 +17,17 @@ interface SubscriptionPlan {
   approver?: any;
   createdAt: string;
   updatedAt: string;
+  targetNationalLevelId?: string;
   targetRegionId?: string;
   targetLocalityId?: string;
   targetAdminUnitId?: string;
   targetDistrictId?: string;
+  targetExpatriateRegionId?: string;
+  targetSectorNationalLevelId?: string;
+  targetSectorRegionId?: string;
+  targetSectorLocalityId?: string;
+  targetSectorAdminUnitId?: string;
+  targetSectorDistrictId?: string;
   subscriptions?: Subscription[];
 }
 
@@ -105,10 +112,17 @@ const subscriptionService = {
       currency: string;
       period: string;
       isDonation?: boolean;
+      targetNationalLevelId?: string;
       targetRegionId?: string;
       targetLocalityId?: string;
       targetAdminUnitId?: string;
       targetDistrictId?: string;
+      targetExpatriateRegionId?: string;
+      targetSectorNationalLevelId?: string;
+      targetSectorRegionId?: string;
+      targetSectorLocalityId?: string;
+      targetSectorAdminUnitId?: string;
+      targetSectorDistrictId?: string;
     }
   ) => {
     const dataToSend = {
@@ -147,10 +161,17 @@ const subscriptionService = {
       period?: string;
       active?: boolean;
       isDonation?: boolean;
-      targetRegionId?: string;
-      targetLocalityId?: string;
-      targetAdminUnitId?: string;
-      targetDistrictId?: string;
+      targetNationalLevelId?: string | null;
+      targetRegionId?: string | null;
+      targetLocalityId?: string | null;
+      targetAdminUnitId?: string | null;
+      targetDistrictId?: string | null;
+      targetExpatriateRegionId?: string | null;
+      targetSectorNationalLevelId?: string | null;
+      targetSectorRegionId?: string | null;
+      targetSectorLocalityId?: string | null;
+      targetSectorAdminUnitId?: string | null;
+      targetSectorDistrictId?: string | null;
     }
   ) => {
     const dataToSend = {
