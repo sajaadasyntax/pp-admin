@@ -38,6 +38,15 @@ interface AdminUser {
   adminLevel: string;
 }
 
+interface UserForManagement {
+  id: string;
+  name: string;
+  email?: string;
+  mobileNumber: string;
+  adminLevel?: string;
+  expatriateRegionId?: string;
+}
+
 export default function ExpatriateRegionsPage() {
   const { token } = useAuth();
   const [regions, setRegions] = useState<ExpatriateRegion[]>([]);
@@ -57,6 +66,15 @@ export default function ExpatriateRegionsPage() {
   const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  // User management state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedRegionForUsers, setSelectedRegionForUsers] = useState<ExpatriateRegion | null>(null);
+  const [currentUsers, setCurrentUsers] = useState<UserForManagement[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserForManagement[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submittingUsers, setSubmittingUsers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -228,6 +246,114 @@ export default function ExpatriateRegionsPage() {
     }
   };
 
+  // Fetch users for expatriate region management
+  const fetchUsersForRegion = async (region: ExpatriateRegion) => {
+    if (!token) return;
+    
+    setLoadingUsers(true);
+    try {
+      // Get current users in the region
+      const usersData = await apiCall(`/expatriate-hierarchy/expatriate-regions/${region.id}/users`);
+      const allUsers = Array.isArray(usersData) ? usersData : usersData.data || [];
+      
+      const regionUsers = allUsers.map((u: any) => ({
+        id: u.id,
+        name: u.profile?.firstName && u.profile?.lastName
+          ? `${u.profile.firstName} ${u.profile.lastName}`
+          : u.memberDetails?.fullName || u.email || u.mobileNumber,
+        email: u.email,
+        mobileNumber: u.mobileNumber,
+        adminLevel: u.adminLevel,
+        expatriateRegionId: u.expatriateRegionId
+      }));
+      
+      setCurrentUsers(regionUsers);
+      
+      // Get available users (all users not in this region)
+      const allUsersData = await apiCall('/users?page=1&limit=1000');
+      const allUsersList = Array.isArray(allUsersData) ? allUsersData : allUsersData.users || allUsersData.data || [];
+      
+      const availableUsersList = allUsersList
+        .filter((u: any) => u.expatriateRegionId !== region.id)
+        .map((u: any) => ({
+          id: u.id,
+          name: u.profile?.firstName && u.profile?.lastName
+            ? `${u.profile.firstName} ${u.profile.lastName}`
+            : u.memberDetails?.fullName || u.email || u.mobileNumber,
+          email: u.email,
+          mobileNumber: u.mobileNumber,
+          adminLevel: u.adminLevel,
+          expatriateRegionId: u.expatriateRegionId
+        }));
+      
+      setAvailableUsers(availableUsersList);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      alert('فشل في تحميل المستخدمين');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Open user management modal
+  const handleManageUsers = (region: ExpatriateRegion) => {
+    setSelectedRegionForUsers(region);
+    setShowUserModal(true);
+    setSearchQuery('');
+    fetchUsersForRegion(region);
+  };
+
+  // Add user to expatriate region
+  const handleAddUserToRegion = async (userId: string) => {
+    if (!selectedRegionForUsers || !token) return;
+    
+    setSubmittingUsers(true);
+    try {
+      await apiCall(`/expatriate-hierarchy/users/${userId}/expatriate-region`, {
+        method: 'PUT',
+        body: JSON.stringify({ expatriateRegionId: selectedRegionForUsers.id }),
+      });
+
+      alert('تم إضافة المستخدم إلى القطاع بنجاح');
+      await fetchUsersForRegion(selectedRegionForUsers);
+      fetchRegions();
+    } catch (error) {
+      console.error('Error adding user to region:', error);
+      alert('فشل في إضافة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
+  };
+
+  // Remove user from expatriate region
+  const handleRemoveUserFromRegion = async (userId: string) => {
+    if (!selectedRegionForUsers || !token) return;
+    
+    const user = currentUsers.find(u => u.id === userId);
+    const userName = user?.name || 'هذا المستخدم';
+    
+    if (!window.confirm(`هل أنت متأكد من إزالة "${userName}" من هذا القطاع؟`)) {
+      return;
+    }
+    
+    setSubmittingUsers(true);
+    try {
+      await apiCall(`/expatriate-hierarchy/users/${userId}/expatriate-region`, {
+        method: 'PUT',
+        body: JSON.stringify({ expatriateRegionId: null }),
+      });
+
+      alert('تم إزالة المستخدم من القطاع بنجاح');
+      await fetchUsersForRegion(selectedRegionForUsers);
+      fetchRegions();
+    } catch (error) {
+      console.error('Error removing user from region:', error);
+      alert('فشل في إزالة المستخدم');
+    } finally {
+      setSubmittingUsers(false);
+    }
+  };
+
   const getAdminDisplayName = (admin: ExpatriateRegion['admin']): string => {
     if (!admin) return '';
     if (admin.memberDetails?.fullName) return admin.memberDetails.fullName;
@@ -390,6 +516,12 @@ export default function ExpatriateRegionsPage() {
                 >
                   👤 المشرف
                 </button>
+                <button
+                  onClick={() => handleManageUsers(region)}
+                  className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                >
+                  👥 المستخدمين
+                </button>
                 <Link
                   href={`/dashboard/sectors?hierarchy=expatriates&region=${region.id}`}
                   className="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium text-center"
@@ -404,7 +536,7 @@ export default function ExpatriateRegionsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(region.id)}
-                  className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
+                  className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium col-span-2"
                 >
                   🗑️ حذف
                 </button>
@@ -518,6 +650,161 @@ export default function ExpatriateRegionsPage() {
               >
                 إغلاق
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showUserModal && selectedRegionForUsers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة المستخدمين - {selectedRegionForUsers.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowUserModal(false);
+                    setSelectedRegionForUsers(null);
+                    setSearchQuery('');
+                    setCurrentUsers([]);
+                    setAvailableUsers([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="بحث عن مستخدم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {loadingUsers ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Current Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون الحاليون ({currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {currentUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveUserFromRegion(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                            >
+                              إزالة
+                            </button>
+                          </div>
+                        ))}
+                      {currentUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون في هذا القطاع</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Available Users */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                      المستخدمون المتاحون ({availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length})
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {availableUsers
+                        .filter(u => 
+                          !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.mobileNumber.includes(searchQuery) || 
+                          (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between hover:border-blue-300"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.mobileNumber}</div>
+                              {user.email && (
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleAddUserToRegion(user.id)}
+                              disabled={submittingUsers}
+                              className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              إضافة
+                            </button>
+                          </div>
+                        ))}
+                      {availableUsers.filter(u => 
+                        !searchQuery || u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        u.mobileNumber.includes(searchQuery) || 
+                        (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+                      ).length === 0 && (
+                        <p className="text-sm text-gray-500 py-4 text-center">لا يوجد مستخدمون متاحون للإضافة</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUserModal(false);
+                    setSelectedRegionForUsers(null);
+                    setSearchQuery('');
+                    setCurrentUsers([]);
+                    setAvailableUsers([]);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إغلاق
+                </button>
+              </div>
             </div>
           </div>
         </div>
