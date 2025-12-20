@@ -75,6 +75,19 @@ export default function ExpatriateRegionsPage() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [submittingUsers, setSubmittingUsers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Create user state
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [selectedRegionForCreate, setSelectedRegionForCreate] = useState<ExpatriateRegion | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({
+    mobileNumber: '',
+    password: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    fullName: ''
+  });
 
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
     if (!token) throw new Error('No authentication token');
@@ -354,6 +367,58 @@ export default function ExpatriateRegionsPage() {
     }
   };
 
+  // Open create user modal
+  const openCreateUserModal = (region: ExpatriateRegion) => {
+    setSelectedRegionForCreate(region);
+    setShowCreateUserModal(true);
+    setCreateUserForm({
+      mobileNumber: '',
+      password: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      fullName: ''
+    });
+  };
+
+  // Create new user for expatriate region
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRegionForCreate || !token) return;
+    
+    // Validate required fields
+    if (!createUserForm.mobileNumber) {
+      alert('رقم الهاتف مطلوب');
+      return;
+    }
+    if (!createUserForm.password) {
+      alert('كلمة المرور مطلوبة');
+      return;
+    }
+    if (!createUserForm.firstName && !createUserForm.lastName && !createUserForm.fullName) {
+      alert('الاسم مطلوب');
+      return;
+    }
+    
+    setCreatingUser(true);
+    try {
+      await apiCall(`/expatriate-hierarchy/expatriate-regions/${selectedRegionForCreate.id}/users`, {
+        method: 'POST',
+        body: JSON.stringify(createUserForm),
+      });
+      
+      alert('تم إنشاء المستخدم بنجاح');
+      setShowCreateUserModal(false);
+      setSelectedRegionForCreate(null);
+      fetchRegions();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      alert(error.message || 'فشل في إنشاء المستخدم');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   const getAdminDisplayName = (admin: ExpatriateRegion['admin']): string => {
     if (!admin) return '';
     if (admin.memberDetails?.fullName) return admin.memberDetails.fullName;
@@ -522,6 +587,12 @@ export default function ExpatriateRegionsPage() {
                 >
                   👥 المستخدمين
                 </button>
+                <button
+                  onClick={() => openCreateUserModal(region)}
+                  className="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                >
+                  ➕ إنشاء مستخدم
+                </button>
                 <Link
                   href={`/dashboard/sectors?hierarchy=expatriates&region=${region.id}`}
                   className="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium text-center"
@@ -536,7 +607,7 @@ export default function ExpatriateRegionsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(region.id)}
-                  className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium col-span-2"
+                  className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium"
                 >
                   🗑️ حذف
                 </button>
@@ -806,6 +877,133 @@ export default function ExpatriateRegionsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && selectedRegionForCreate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 border-b bg-green-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">إنشاء مستخدم جديد</h2>
+                  <p className="text-gray-600 text-sm mt-1">قطاع: {selectedRegionForCreate.name}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCreateUserModal(false);
+                    setSelectedRegionForCreate(null);
+                  }}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  رقم الهاتف <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={createUserForm.mobileNumber}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, mobileNumber: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="مثال: 0912345678"
+                  required
+                  dir="ltr"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  كلمة المرور <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={createUserForm.password}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="كلمة المرور"
+                  required
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">الاسم الأول</label>
+                  <input
+                    type="text"
+                    value={createUserForm.firstName}
+                    onChange={(e) => setCreateUserForm({ ...createUserForm, firstName: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="الاسم الأول"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">اسم العائلة</label>
+                  <input
+                    type="text"
+                    value={createUserForm.lastName}
+                    onChange={(e) => setCreateUserForm({ ...createUserForm, lastName: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="اسم العائلة"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">أو الاسم الكامل</label>
+                <input
+                  type="text"
+                  value={createUserForm.fullName}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, fullName: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="الاسم الكامل (اختياري إذا تم إدخال الاسم الأول والعائلة)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
+                <input
+                  type="email"
+                  value={createUserForm.email}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="example@email.com"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                >
+                  {creatingUser ? 'جاري الإنشاء...' : 'إنشاء المستخدم'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateUserModal(false);
+                    setSelectedRegionForCreate(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
