@@ -93,13 +93,20 @@ const levelEndpoints: Record<SectorLevel, string> = {
   district: 'sector-districts'
 };
 
+// Levels available for each hierarchy type
+// Original/Geographic hierarchy: Region → Locality → AdminUnit → District (NO national level)
+// Expatriate hierarchy: National → Region → Locality → AdminUnit → District
+const levelsForOriginal: SectorLevel[] = ['region', 'locality', 'adminUnit', 'district'];
+const levelsForExpatriate: SectorLevel[] = ['national', 'region', 'locality', 'adminUnit', 'district'];
+
 export default function SectorsPage() {
   const { user, token } = useAuth();
   const searchParams = useSearchParams();
   const [hierarchyType, setHierarchyType] = useState<HierarchyType>(
     (searchParams.get('hierarchy') as HierarchyType) || 'original'
   );
-  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('national');
+  // Default to 'region' for original hierarchy, 'national' for expatriates
+  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('region');
   const [selectedExpatriateRegion, setSelectedExpatriateRegion] = useState<string | null>(
     searchParams.get('region') || null
   );
@@ -404,6 +411,8 @@ export default function SectorsPage() {
               setHierarchyType('original');
               setSelectedExpatriateRegion(null);
               setEditingSectorType(null);
+              // Reset to 'region' since original hierarchy doesn't have national level sectors
+              setSelectedLevel('region');
             }}
             className={`px-6 py-3 rounded-lg font-medium transition-all ${
               hierarchyType === 'original'
@@ -417,6 +426,8 @@ export default function SectorsPage() {
             onClick={() => {
               setHierarchyType('expatriates');
               setEditingSectorType(null);
+              // Set to 'national' for expatriate hierarchy
+              setSelectedLevel('national');
             }}
             className={`px-6 py-3 rounded-lg font-medium transition-all ${
               hierarchyType === 'expatriates'
@@ -471,7 +482,7 @@ export default function SectorsPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
         <h2 className="text-lg font-semibold mb-3">اختر المستوى</h2>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(levelLabels) as SectorLevel[]).map((level) => (
+          {(hierarchyType === 'original' ? levelsForOriginal : levelsForExpatriate).map((level) => (
             <button
               key={level}
               onClick={() => {
@@ -488,6 +499,11 @@ export default function SectorsPage() {
             </button>
           ))}
         </div>
+        {hierarchyType === 'original' && (
+          <p className="text-sm text-gray-500 mt-2">
+            💡 التسلسل الهرمي الجغرافي لا يحتوي على مستوى قومي للقطاعات - تبدأ القطاعات من مستوى الولاية
+          </p>
+        )}
       </div>
 
       {/* Fixed 4 Sectors Grid */}

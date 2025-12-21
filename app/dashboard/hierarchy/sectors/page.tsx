@@ -84,9 +84,13 @@ const levelEndpoints: Record<SectorLevel, string> = {
   district: 'sector-districts'
 };
 
+// For the original/geographic hierarchy, sectors start at Region level (no National level)
+const availableLevels: SectorLevel[] = ['region', 'locality', 'adminUnit', 'district'];
+
 export default function SectorsPage() {
   const { token } = useAuth();
-  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('national');
+  // Default to 'region' since geographic hierarchy doesn't have national level sectors
+  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('region');
   const [sectors, setSectors] = useState<SectorHierarchy[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSectorType, setEditingSectorType] = useState<SectorType | null>(null);
@@ -350,7 +354,7 @@ export default function SectorsPage() {
       <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">اختر المستوى</h3>
         <div className="flex flex-wrap gap-3">
-          {(Object.keys(levelLabels) as SectorLevel[]).map((level) => (
+          {availableLevels.map((level) => (
             <button
               key={level}
               onClick={() => {
@@ -367,6 +371,9 @@ export default function SectorsPage() {
             </button>
           ))}
         </div>
+        <p className="text-sm text-gray-500 mt-3">
+          💡 في التسلسل الهرمي الجغرافي، تبدأ القطاعات من مستوى الولاية. للمستوى القومي للقطاعات، استخدم نظام المغتربين.
+        </p>
       </div>
 
       {/* Loading State */}
