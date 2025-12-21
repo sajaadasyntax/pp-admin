@@ -561,6 +561,14 @@ export default function AdminUnitsPage() {
                   الأحياء
                 </Link>
               </div>
+              <div className="flex gap-2 mb-2">
+                <Link
+                  href={`/dashboard/sectors?hierarchy=original&level=adminUnit&entityId=${adminUnit.id}&entityName=${encodeURIComponent(adminUnit.name)}`}
+                  className="flex-1 px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 text-xs font-medium text-center"
+                >
+                  🏛️ إدارة القطاعات
+                </Link>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(adminUnit)}

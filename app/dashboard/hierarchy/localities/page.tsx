@@ -518,6 +518,14 @@ export default function LocalitiesPage() {
                   الوحدات
                 </Link>
               </div>
+              <div className="flex gap-2 mb-2">
+                <Link
+                  href={`/dashboard/sectors?hierarchy=original&level=locality&entityId=${locality.id}&entityName=${encodeURIComponent(locality.name)}`}
+                  className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-xs font-medium text-center"
+                >
+                  🏛️ إدارة القطاعات
+                </Link>
+              </div>
               {canModifyLocality(locality) && (
                 <div className="flex gap-2">
                   <button

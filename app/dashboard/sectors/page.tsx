@@ -102,14 +102,24 @@ const levelsForExpatriate: SectorLevel[] = ['national', 'region', 'locality', 'a
 export default function SectorsPage() {
   const { user, token } = useAuth();
   const searchParams = useSearchParams();
+  
+  // Get filter parameters from URL
+  const urlLevel = searchParams.get('level') as SectorLevel | null;
+  const urlEntityId = searchParams.get('entityId');
+  const urlEntityName = searchParams.get('entityName');
+  
   const [hierarchyType, setHierarchyType] = useState<HierarchyType>(
     (searchParams.get('hierarchy') as HierarchyType) || 'original'
   );
-  // Default to 'region' for original hierarchy, 'national' for expatriates
-  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>('region');
+  // Default to URL level if provided, otherwise 'region' for original hierarchy
+  const [selectedLevel, setSelectedLevel] = useState<SectorLevel>(urlLevel || 'region');
   const [selectedExpatriateRegion, setSelectedExpatriateRegion] = useState<string | null>(
     searchParams.get('region') || null
   );
+  // Entity filter state
+  const [filterEntityId, setFilterEntityId] = useState<string | null>(urlEntityId || null);
+  const [filterEntityName, setFilterEntityName] = useState<string | null>(urlEntityName || null);
+  
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [expatriateRegions, setExpatriateRegions] = useState<ExpatriateRegion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,14 +186,27 @@ export default function SectorsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setSectors(data.data || []);
+        let fetchedSectors = data.data || [];
+        
+        // Filter sectors by entity ID if provided (from hierarchy card navigation)
+        if (filterEntityId && hierarchyType === 'original') {
+          // Sectors are linked to hierarchy entities through the description metadata
+          // Format: SOURCE:level:entityId (e.g., SOURCE:region:uuid-here)
+          fetchedSectors = fetchedSectors.filter((sector: Sector) => {
+            if (!sector.description) return false;
+            const expectedPattern = `SOURCE:${selectedLevel}:${filterEntityId}`;
+            return sector.description.includes(expectedPattern);
+          });
+        }
+        
+        setSectors(fetchedSectors);
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedLevel, hierarchyType, selectedExpatriateRegion, token]);
+  }, [selectedLevel, hierarchyType, selectedExpatriateRegion, filterEntityId, token]);
 
   const fetchSectorMembers = async (sectorId: string) => {
     if (!token) return;
@@ -387,43 +410,77 @@ export default function SectorsPage() {
         <p className="text-gray-600 mt-1">إدارة القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل مستوى في كلا النظامين</p>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6">
-        <div className="flex items-start">
-          <span className="text-3xl ml-4">💡</span>
-          <div>
-            <h3 className="text-indigo-900 font-semibold text-lg mb-2">عن القطاعات</h3>
-            <p className="text-indigo-800">
-              يمكن إنشاء القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل مستوى في:
-              <strong> التسلسل الهرمي الجغرافي</strong> (المستوى القومي → الولاية → المحلية → الوحدة الإدارية → الحي)
-              و <strong>نظام المغتربين</strong> (لكل قطاع من قطاعات المغتربين).
-            </p>
+      {/* Entity Filter Banner - shows when navigating from a hierarchy card */}
+      {filterEntityId && filterEntityName && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl p-4 mb-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏛️</span>
+              <div>
+                <h3 className="font-bold text-lg">قطاعات {filterEntityName}</h3>
+                <p className="text-indigo-100 text-sm">
+                  عرض القطاعات الخاصة بـ {levelLabels[selectedLevel]}: {filterEntityName}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setFilterEntityId(null);
+                setFilterEntityName(null);
+                // Update URL without the filter params
+                window.history.replaceState({}, '', '/dashboard/sectors');
+              }}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-all"
+            >
+              عرض جميع القطاعات
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Hierarchy Type Selector */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      {/* Info Banner - only show when not filtering by entity */}
+      {!filterEntityId && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6">
+          <div className="flex items-start">
+            <span className="text-3xl ml-4">💡</span>
+            <div>
+              <h3 className="text-indigo-900 font-semibold text-lg mb-2">عن القطاعات</h3>
+              <p className="text-indigo-800">
+                يمكن إنشاء القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل مستوى في:
+                <strong> التسلسل الهرمي الجغرافي</strong> (المستوى القومي → الولاية → المحلية → الوحدة الإدارية → الحي)
+                و <strong>نظام المغتربين</strong> (لكل قطاع من قطاعات المغتربين).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hierarchy Type Selector - disabled when filtering by entity */}
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 ${filterEntityId ? 'opacity-60' : ''}`}>
         <h2 className="text-lg font-semibold mb-3">اختر النظام</h2>
         <div className="flex gap-3">
           <button
             onClick={() => {
+              if (filterEntityId) return; // Don't allow switching when filtering
               setHierarchyType('original');
               setSelectedExpatriateRegion(null);
               setEditingSectorType(null);
               // Reset to 'region' since original hierarchy doesn't have national level sectors
               setSelectedLevel('region');
             }}
+            disabled={!!filterEntityId}
             className={`px-6 py-3 rounded-lg font-medium transition-all ${
               hierarchyType === 'original'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            } ${filterEntityId ? 'cursor-not-allowed' : ''}`}
           >
             التسلسل الهرمي الجغرافي
           </button>
           <button
+            disabled={!!filterEntityId}
             onClick={() => {
+              if (filterEntityId) return; // Don't allow switching when filtering
               setHierarchyType('expatriates');
               setEditingSectorType(null);
               // Set to 'national' for expatriate hierarchy
@@ -433,11 +490,14 @@ export default function SectorsPage() {
               hierarchyType === 'expatriates'
                 ? 'bg-cyan-600 text-white shadow-md'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            } ${filterEntityId ? 'cursor-not-allowed' : ''}`}
           >
             نظام المغتربين
           </button>
         </div>
+        {filterEntityId && (
+          <p className="text-xs text-gray-500 mt-2">* لتغيير النظام، اضغط على &ldquo;عرض جميع القطاعات&rdquo; أعلاه</p>
+        )}
       </div>
 
       {/* Expatriate Region Selector */}
@@ -478,14 +538,16 @@ export default function SectorsPage() {
         </div>
       )}
 
-      {/* Level Selector */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+      {/* Level Selector - disabled when filtering by entity */}
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 ${filterEntityId ? 'opacity-60' : ''}`}>
         <h2 className="text-lg font-semibold mb-3">اختر المستوى</h2>
         <div className="flex flex-wrap gap-2">
           {(hierarchyType === 'original' ? levelsForOriginal : levelsForExpatriate).map((level) => (
             <button
               key={level}
+              disabled={!!filterEntityId}
               onClick={() => {
+                if (filterEntityId) return; // Don't allow switching when filtering
                 setSelectedLevel(level);
                 setEditingSectorType(null);
               }}
@@ -493,16 +555,19 @@ export default function SectorsPage() {
                 selectedLevel === level
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              } ${filterEntityId ? 'cursor-not-allowed' : ''}`}
             >
               {levelLabels[level]}
             </button>
           ))}
         </div>
-        {hierarchyType === 'original' && (
+        {hierarchyType === 'original' && !filterEntityId && (
           <p className="text-sm text-gray-500 mt-2">
             💡 التسلسل الهرمي الجغرافي لا يحتوي على مستوى قومي للقطاعات - تبدأ القطاعات من مستوى الولاية
           </p>
+        )}
+        {filterEntityId && (
+          <p className="text-xs text-gray-500 mt-2">* لتغيير المستوى، اضغط على &ldquo;عرض جميع القطاعات&rdquo; أعلاه</p>
         )}
       </div>
 

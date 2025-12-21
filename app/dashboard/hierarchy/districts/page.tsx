@@ -882,6 +882,14 @@ export default function DistrictsPage() {
                   إدارة المستخدمين
                 </button>
               </div>
+              <div className="flex gap-2 mb-2">
+                <Link
+                  href={`/dashboard/sectors?hierarchy=original&level=district&entityId=${district.id}&entityName=${encodeURIComponent(district.name)}`}
+                  className="flex-1 px-3 py-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 text-xs font-medium text-center"
+                >
+                  🏛️ إدارة القطاعات
+                </Link>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(district)}
