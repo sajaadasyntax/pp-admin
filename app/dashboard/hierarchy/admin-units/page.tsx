@@ -59,6 +59,56 @@ interface AdminUser {
   adminLevel: string;
 }
 
+// Sector types and interfaces
+type SectorType = 'SOCIAL' | 'ECONOMIC' | 'ORGANIZATIONAL' | 'POLITICAL';
+
+interface Sector {
+  id: string;
+  name: string;
+  sectorType: SectorType;
+  description?: string;
+  active: boolean;
+  _count?: {
+    users: number;
+  };
+}
+
+interface SectorMember {
+  id: string;
+  email?: string;
+  mobileNumber: string;
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  memberDetails?: {
+    fullName?: string;
+  };
+}
+
+const FIXED_SECTOR_TYPES: SectorType[] = ['SOCIAL', 'ECONOMIC', 'ORGANIZATIONAL', 'POLITICAL'];
+
+const sectorTypeLabels: Record<SectorType, string> = {
+  SOCIAL: 'الاجتماعي',
+  ECONOMIC: 'الاقتصادي',
+  ORGANIZATIONAL: 'التنظيمي',
+  POLITICAL: 'السياسي'
+};
+
+const sectorTypeIcons: Record<SectorType, string> = {
+  SOCIAL: '👥',
+  ECONOMIC: '💰',
+  ORGANIZATIONAL: '🏛️',
+  POLITICAL: '⚖️'
+};
+
+const sectorTypeColors: Record<SectorType, string> = {
+  SOCIAL: 'bg-blue-100 text-blue-800 border-blue-300',
+  ECONOMIC: 'bg-green-100 text-green-800 border-green-300',
+  ORGANIZATIONAL: 'bg-purple-100 text-purple-800 border-purple-300',
+  POLITICAL: 'bg-red-100 text-red-800 border-red-300'
+};
+
 // Check if user can manage admin units
 const FULL_ACCESS_LEVELS = ['ADMIN', 'GENERAL_SECRETARIAT'];
 
@@ -87,6 +137,18 @@ export default function AdminUnitsPage() {
   const [selectedAdminUnit, setSelectedAdminUnit] = useState<AdminUnit | null>(null);
   const [availableAdmins, setAvailableAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
+
+  // Sector management state
+  const [showSectorModal, setShowSectorModal] = useState(false);
+  const [selectedAdminUnitForSectors, setSelectedAdminUnitForSectors] = useState<AdminUnit | null>(null);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [loadingSectors, setLoadingSectors] = useState(false);
+  const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
+  const [sectorMembers, setSectorMembers] = useState<SectorMember[]>([]);
+  const [availableSectorUsers, setAvailableSectorUsers] = useState<SectorMember[]>([]);
+  const [loadingSectorMembers, setLoadingSectorMembers] = useState(false);
+  const [submittingSector, setSubmittingSector] = useState(false);
+  const [sectorSearchQuery, setSectorSearchQuery] = useState('');
 
   // Permission checks based on user's admin level
   const canCreateAdminUnit = () => {
@@ -352,6 +414,174 @@ export default function AdminUnitsPage() {
     return email || mobileNumber;
   };
 
+  // ==================== SECTOR MANAGEMENT FUNCTIONS ====================
+
+  const fetchSectorsForAdminUnit = async (adminUnit: AdminUnit) => {
+    if (!token) return;
+    
+    setLoadingSectors(true);
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/sector-admin-units?originalOnly=true`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const allSectors = data.data || [];
+        const adminUnitSectors = allSectors.filter((sector: Sector) => {
+          if (!sector.description) return false;
+          return sector.description.includes(`SOURCE:adminUnit:${adminUnit.id}`);
+        });
+        setSectors(adminUnitSectors);
+      }
+    } catch (error) {
+      console.error('Error fetching sectors:', error);
+    } finally {
+      setLoadingSectors(false);
+    }
+  };
+
+  const fetchSectorMembers = async (sectorId: string) => {
+    if (!token) return;
+
+    setLoadingSectorMembers(true);
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/members/adminUnit/${sectorId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSectorMembers(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching sector members:', error);
+    } finally {
+      setLoadingSectorMembers(false);
+    }
+  };
+
+  const fetchAvailableSectorUsers = async (sectorId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/available-users/adminUnit/${sectorId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableSectorUsers(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available users:', error);
+    }
+  };
+
+  const handleManageSectors = (adminUnit: AdminUnit) => {
+    setSelectedAdminUnitForSectors(adminUnit);
+    setShowSectorModal(true);
+    setSelectedSector(null);
+    setSectorMembers([]);
+    setAvailableSectorUsers([]);
+    setSectorSearchQuery('');
+    fetchSectorsForAdminUnit(adminUnit);
+  };
+
+  const handleSelectSector = (sector: Sector) => {
+    setSelectedSector(sector);
+    setSectorSearchQuery('');
+    fetchSectorMembers(sector.id);
+    fetchAvailableSectorUsers(sector.id);
+  };
+
+  const handleAddUserToSector = async (userId: string) => {
+    if (!token || !selectedSector) return;
+
+    setSubmittingSector(true);
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/members/adminUnit/${selectedSector.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        fetchSectorMembers(selectedSector.id);
+        fetchAvailableSectorUsers(selectedSector.id);
+      } else {
+        alert('فشل في إضافة العضو');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء إضافة العضو');
+    } finally {
+      setSubmittingSector(false);
+    }
+  };
+
+  const handleRemoveUserFromSector = async (userId: string) => {
+    if (!token || !selectedSector) return;
+
+    const member = sectorMembers.find(m => m.id === userId);
+    const memberName = getMemberName(member);
+    
+    if (!window.confirm(`هل أنت متأكد من إزالة "${memberName}" من هذا القطاع؟`)) {
+      return;
+    }
+
+    setSubmittingSector(true);
+    try {
+      const response = await fetch(`${apiUrl}/sector-hierarchy/members/adminUnit/${selectedSector.id}/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        fetchSectorMembers(selectedSector.id);
+        fetchAvailableSectorUsers(selectedSector.id);
+      } else {
+        alert('فشل في إزالة العضو');
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء إزالة العضو');
+    } finally {
+      setSubmittingSector(false);
+    }
+  };
+
+  const getMemberName = (member?: SectorMember): string => {
+    if (!member) return 'غير معروف';
+    
+    if (member.profile?.firstName && member.profile?.lastName) {
+      return `${member.profile.firstName} ${member.profile.lastName}`;
+    }
+    
+    if (member.memberDetails?.fullName) {
+      return member.memberDetails.fullName;
+    }
+    
+    return member.email || member.mobileNumber;
+  };
+
+  const getSectorByType = (type: SectorType): Sector | undefined => {
+    return sectors.find(s => s.sectorType === type);
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -562,12 +792,12 @@ export default function AdminUnitsPage() {
                 </Link>
               </div>
               <div className="flex gap-2 mb-2">
-                <Link
-                  href={`/dashboard/sectors?hierarchy=original&level=adminUnit&entityId=${adminUnit.id}&entityName=${encodeURIComponent(adminUnit.name)}`}
-                  className="flex-1 px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 text-xs font-medium text-center"
+                <button
+                  onClick={() => handleManageSectors(adminUnit)}
+                  className="flex-1 px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 text-xs font-medium"
                 >
                   🏛️ إدارة القطاعات
-                </Link>
+                </button>
               </div>
               <div className="flex gap-2">
                 <button
@@ -680,6 +910,193 @@ export default function AdminUnitsPage() {
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
                   إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sector Management Modal */}
+      {showSectorModal && selectedAdminUnitForSectors && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">إدارة القطاعات - {selectedAdminUnitForSectors.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowSectorModal(false);
+                    setSelectedAdminUnitForSectors(null);
+                    setSelectedSector(null);
+                    setSectors([]);
+                    setSectorMembers([]);
+                    setAvailableSectorUsers([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {loadingSectors ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-700 mb-2">القطاعات الأربعة</h3>
+                    {FIXED_SECTOR_TYPES.map((type) => {
+                      const sector = getSectorByType(type);
+                      const isSelected = selectedSector?.sectorType === type;
+                      
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => sector && handleSelectSector(sector)}
+                          disabled={!sector}
+                          className={`w-full text-right p-4 rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : sector
+                                ? `${sectorTypeColors[type]} hover:shadow-md cursor-pointer`
+                                : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{sectorTypeIcons[type]}</span>
+                            <div className="flex-1">
+                              <div className="font-semibold">{sectorTypeLabels[type]}</div>
+                              <div className="text-xs text-gray-500">
+                                {sector ? `${sector._count?.users || 0} أعضاء` : 'غير مفعل'}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <span className="text-indigo-600">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    
+                    {sectors.length === 0 && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        <p>لم يتم إنشاء قطاعات لهذه الوحدة بعد</p>
+                        <p className="text-xs mt-1">يرجى تشغيل سكربت البذر لإنشاء القطاعات</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-r pr-4">
+                    {selectedSector ? (
+                      <>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-700">
+                            أعضاء {sectorTypeLabels[selectedSector.sectorType]}
+                          </h3>
+                          <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                            {sectorMembers.length} عضو
+                          </span>
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="text-sm font-medium text-gray-600 mb-2">الأعضاء الحاليون</div>
+                          {loadingSectorMembers ? (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+                            </div>
+                          ) : sectorMembers.length === 0 ? (
+                            <p className="text-sm text-gray-500 py-2">لا يوجد أعضاء في هذا القطاع</p>
+                          ) : (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {sectorMembers.map((member) => (
+                                <div
+                                  key={member.id}
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                                >
+                                  <div>
+                                    <div className="font-medium text-sm">{getMemberName(member)}</div>
+                                    <div className="text-xs text-gray-500">{member.mobileNumber}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleRemoveUserFromSector(member.id)}
+                                    disabled={submittingSector}
+                                    className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50"
+                                  >
+                                    إزالة
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="text-sm font-medium text-gray-600 mb-2">إضافة أعضاء</div>
+                          <input
+                            type="text"
+                            placeholder="بحث عن مستخدم..."
+                            value={sectorSearchQuery}
+                            onChange={(e) => setSectorSearchQuery(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-lg text-sm mb-2"
+                          />
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {availableSectorUsers
+                              .filter(u => 
+                                !sectorSearchQuery || 
+                                getMemberName(u).toLowerCase().includes(sectorSearchQuery.toLowerCase()) ||
+                                u.mobileNumber.includes(sectorSearchQuery)
+                              )
+                              .slice(0, 10)
+                              .map((user) => (
+                                <button
+                                  key={user.id}
+                                  onClick={() => handleAddUserToSector(user.id)}
+                                  disabled={submittingSector}
+                                  className="w-full flex items-center justify-between p-2 bg-white border rounded-lg hover:bg-indigo-50 hover:border-indigo-300 disabled:opacity-50"
+                                >
+                                  <div className="text-right">
+                                    <div className="font-medium text-sm">{getMemberName(user)}</div>
+                                    <div className="text-xs text-gray-500">{user.mobileNumber}</div>
+                                  </div>
+                                  <span className="text-indigo-600 text-xs">+ إضافة</span>
+                                </button>
+                              ))}
+                            {availableSectorUsers.length === 0 && (
+                              <p className="text-sm text-gray-500 py-2">لا يوجد مستخدمون متاحون</p>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        <div className="text-center">
+                          <span className="text-4xl block mb-2">👈</span>
+                          <p>اختر قطاعاً لإدارة أعضائه</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowSectorModal(false);
+                    setSelectedAdminUnitForSectors(null);
+                    setSelectedSector(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  إغلاق
                 </button>
               </div>
             </div>
