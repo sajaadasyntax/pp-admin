@@ -63,6 +63,67 @@ export default function DashboardLayout({
     window.location.href = "/";
   };
 
+  // Build hierarchy navigation items based on admin level
+  const getHierarchyNavItems = () => {
+    const { adminLevel } = user;
+    const hierarchyChildren: Array<{ name: string; path: string }> = [
+      { name: "نظرة عامة", path: "/dashboard/hierarchy" }
+    ];
+
+    // GENERAL_SECRETARIAT and ADMIN can see everything
+    if (adminLevel === 'GENERAL_SECRETARIAT' || adminLevel === 'ADMIN') {
+      hierarchyChildren.push(
+        { name: "المستوى القومي", path: "/dashboard/hierarchy/national-levels" },
+        { name: "الولايات", path: "/dashboard/hierarchy/regions" },
+        { name: "المحليات", path: "/dashboard/hierarchy/localities" },
+        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+    // NATIONAL_LEVEL can see their national level and regions
+    else if (adminLevel === 'NATIONAL_LEVEL') {
+      hierarchyChildren.push(
+        { name: "المستوى القومي", path: "/dashboard/hierarchy/national-levels" },
+        { name: "الولايات", path: "/dashboard/hierarchy/regions" },
+        { name: "المحليات", path: "/dashboard/hierarchy/localities" },
+        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+    // REGION can see their region and sub-levels
+    else if (adminLevel === 'REGION') {
+      hierarchyChildren.push(
+        { name: "الولاية", path: "/dashboard/hierarchy/regions" },
+        { name: "المحليات", path: "/dashboard/hierarchy/localities" },
+        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+    // LOCALITY can see their locality and sub-levels
+    else if (adminLevel === 'LOCALITY') {
+      hierarchyChildren.push(
+        { name: "المحلية", path: "/dashboard/hierarchy/localities" },
+        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+    // ADMIN_UNIT can see their admin unit and districts
+    else if (adminLevel === 'ADMIN_UNIT') {
+      hierarchyChildren.push(
+        { name: "الوحدة الإدارية", path: "/dashboard/hierarchy/admin-units" },
+        { name: "الأحياء", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+    // DISTRICT can only see their district
+    else if (adminLevel === 'DISTRICT') {
+      hierarchyChildren.push(
+        { name: "الحي", path: "/dashboard/hierarchy/districts" }
+      );
+    }
+
+    return hierarchyChildren;
+  };
+
   const navItems = [
     { name: "الرئيسية", path: "/dashboard" },
     { name: "التقارير", path: "/dashboard/reports" },
@@ -70,28 +131,27 @@ export default function DashboardLayout({
     { name: "التصويت والاستطلاعات", path: "/dashboard/voting-surveys" },
     { name: "النشرة", path: "/dashboard/bulletin" },
     { name: "غرف المحادثة", path: "/dashboard/chatrooms" },
-    // Original Geographic Hierarchy
+    // Original Geographic Hierarchy - dynamic based on admin level
     { 
       name: "التسلسل الهرمي الجغرافي", 
       path: "/dashboard/hierarchy",
-      children: [
-        { name: "نظرة عامة", path: "/dashboard/hierarchy" },
-        { name: "المستوى القومي", path: "/dashboard/hierarchy/national-levels" },
-        { name: "الولايات", path: "/dashboard/hierarchy/regions" },
-        { name: "المحليات", path: "/dashboard/hierarchy/localities" },
-        { name: "الوحدات الإدارية", path: "/dashboard/hierarchy/admin-units" },
-        { name: "الأحياء", path: "/dashboard/hierarchy/districts" },
-      ]
+      children: getHierarchyNavItems()
     },
     // Expatriates Hierarchy (separate, not related to original)
-    { 
-      name: "المغتربين", 
-      path: "/dashboard/expatriates",
-      children: [
-        { name: "نظرة عامة", path: "/dashboard/expatriates" },
-        { name: "قطاعات المغتربين", path: "/dashboard/expatriates/regions" },
-      ]
-    },
+    // Only show to GENERAL_SECRETARIAT, ADMIN, or EXPATRIATE admins
+    ...(user?.adminLevel === 'GENERAL_SECRETARIAT' || 
+        user?.adminLevel === 'ADMIN' || 
+        user?.adminLevel === 'EXPATRIATE_GENERAL' || 
+        user?.adminLevel === 'EXPATRIATE_REGION' ? [
+      { 
+        name: "المغتربين", 
+        path: "/dashboard/expatriates",
+        children: [
+          { name: "نظرة عامة", path: "/dashboard/expatriates" },
+          { name: "قطاعات المغتربين", path: "/dashboard/expatriates/regions" },
+        ]
+      }
+    ] : []),
     // Only show these pages to root admin
     ...(user?.level === "مدير النظام" ? [
       { name: "إدارة المستخدمين", path: "/dashboard/users" },
