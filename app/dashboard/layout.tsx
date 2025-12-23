@@ -92,18 +92,8 @@ export default function DashboardLayout({
         { name: "قطاعات المغتربين", path: "/dashboard/expatriates/regions" },
       ]
     },
-    // Sectors (can be created for both hierarchies)
-    { 
-      name: "القطاعات", 
-      path: "/dashboard/sectors",
-      children: [
-        { name: "نظرة عامة", path: "/dashboard/sectors" },
-        { name: "إدارة القطاعات الجغرافية", path: "/dashboard/hierarchy/sectors" },
-      ]
-    },
     // Only show these pages to root admin
     ...(user?.level === "مدير النظام" ? [
-      { name: "العضويات", path: "/dashboard/memberships" },
       { name: "إدارة المستخدمين", path: "/dashboard/users" },
       { name: "الأرشيف", path: "/dashboard/archive" },
       // TODO: Implement backend support for these features

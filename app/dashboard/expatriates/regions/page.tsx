@@ -593,12 +593,6 @@ export default function ExpatriateRegionsPage() {
                 >
                   ➕ إنشاء مستخدم
                 </button>
-                <Link
-                  href={`/dashboard/sectors?hierarchy=expatriates&region=${region.id}`}
-                  className="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium text-center"
-                >
-                  📊 القطاعات
-                </Link>
                 <button
                   onClick={() => handleEdit(region)}
                   className="px-3 py-2 bg-cyan-50 text-cyan-700 rounded-lg hover:bg-cyan-100 text-sm font-medium"

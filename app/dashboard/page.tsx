@@ -23,7 +23,7 @@ export default function Dashboard() {
   // Stats state
   const [stats, setStats] = useState([
     { title: "إجمالي التقارير", value: 0, bgColor: "bg-[var(--primary-500)]" },
-    { title: "العضويات النشطة", value: 0, bgColor: "bg-[var(--success-500)]" },
+    { title: "المستخدمين النشطين", value: 0, bgColor: "bg-[var(--success-500)]" },
     { title: "الاشتراكات النشطة", value: 0, bgColor: "bg-[var(--accent-500)]" },
     { title: "التصويتات النشطة", value: 0, bgColor: "bg-[var(--error-500)]" },
   ]);
@@ -43,17 +43,13 @@ export default function Dashboard() {
       setError(null);
       
       try {
-        // Fetch real data from the backend
-        const [membershipsData] = await Promise.all([
-          apiClient.memberships.getAllMemberships(token, 'active')
-        ]);
-        
-        // Update stats with real data
+        // Update stats with placeholder data
+        // TODO: Fetch real data from the backend when endpoints are available
         setStats([
-          { title: "إجمالي التقارير", value: 0, bgColor: "bg-[var(--primary-500)]" }, // TODO: fetch from API
-          { title: "العضويات النشطة", value: membershipsData?.length || 0, bgColor: "bg-[var(--success-500)]" },
-          { title: "الاشتراكات النشطة", value: 0, bgColor: "bg-[var(--accent-500)]" }, // TODO: fetch from API
-          { title: "التصويتات النشطة", value: 0, bgColor: "bg-[var(--error-500)]" }, // TODO: fetch from API
+          { title: "إجمالي التقارير", value: 0, bgColor: "bg-[var(--primary-500)]" },
+          { title: "المستخدمين النشطين", value: 0, bgColor: "bg-[var(--success-500)]" },
+          { title: "الاشتراكات النشطة", value: 0, bgColor: "bg-[var(--accent-500)]" },
+          { title: "التصويتات النشطة", value: 0, bgColor: "bg-[var(--error-500)]" },
         ]);
         
         // TODO: Fetch recent activities from API when endpoint is available
@@ -120,7 +116,7 @@ export default function Dashboard() {
             onClick={() => {
               const paths = [
                 "/dashboard/reports", 
-                "/dashboard/memberships", 
+                "/dashboard/hierarchy", 
                 "/dashboard/subscriptions", 
                 "/dashboard/voting"
               ];

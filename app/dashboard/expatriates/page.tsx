@@ -124,28 +124,6 @@ export default function ExpatriatesPage() {
             </div>
           </div>
         </Link>
-
-        <Link
-          href="/dashboard/sectors?hierarchy=expatriates"
-          className="group bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden"
-        >
-          <div className="h-2 bg-gradient-to-r from-indigo-400 to-indigo-600"></div>
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className="text-4xl">💼</div>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">
-              قطاعات المغتربين
-            </h3>
-            <p className="text-sm text-gray-600">إنشاء وإدارة القطاعات الأربعة لقطاعات المغتربين</p>
-            <div className="mt-4 flex items-center text-indigo-600 text-sm font-medium">
-              <span>إدارة</span>
-              <svg className="w-4 h-4 mr-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
-        </Link>
       </div>
 
       {/* Regions Preview */}

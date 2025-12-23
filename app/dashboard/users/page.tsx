@@ -228,12 +228,7 @@ export default function UsersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-[var(--neutral-900)]">إدارة المستخدمين</h1>
-          <button
-            onClick={() => router.push("/dashboard/memberships")}
-            className="app-button-primary"
-          >
-            إضافة مستخدم جديد
-          </button>
+          <p className="text-sm text-gray-500">يمكنك إضافة مستخدمين من صفحات التسلسل الهرمي</p>
         </div>
 
         {/* Error Message */}
@@ -386,12 +381,6 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => router.push(`/dashboard/memberships/${user.id}`)}
-                            className="app-button-primary text-xs"
-                          >
-                            عرض
-                          </button>
                           <button
                             onClick={() => handleToggleStatus(user.id)}
                             className="app-button-secondary text-xs"
