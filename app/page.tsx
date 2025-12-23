@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./context/AuthContext";
 
@@ -8,8 +8,15 @@ export default function LoginPage() {
   const [mobileNumber, setMobileNumber] = useState("900000001");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const router = useRouter();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +38,30 @@ export default function LoginPage() {
       setError("فشل تسجيل الدخول. الرجاء التحقق من بيانات الاعتماد الخاصة بك");
     }
   };
+
+  // Show loading while checking auth status
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+          <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't show login form if user is already logged in (waiting for redirect)
+  if (user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+          <div className="text-xl text-[var(--neutral-600)]">جاري التوجيه إلى لوحة التحكم...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--background)] p-4">

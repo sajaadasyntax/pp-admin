@@ -20,7 +20,7 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isLoading && !user) {
       console.log("No user found, redirecting to login...");
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   }, [user, isLoading]);
 
@@ -60,7 +60,7 @@ export default function DashboardLayout({
   const handleLogout = () => {
     setIsNavigating(true);
     logout();
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   const navItems = [
