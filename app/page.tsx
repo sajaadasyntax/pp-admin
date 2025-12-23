@@ -14,7 +14,7 @@ export default function LoginPage() {
   // Redirect to dashboard if already logged in
   useEffect(() => {
     if (!isLoading && user) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [user, isLoading, router]);
 
@@ -51,7 +51,7 @@ export default function LoginPage() {
     );
   }
 
-  // Don't show login form if user is already logged in (waiting for redirect)
+  // If user is logged in, show redirect message (useEffect will handle redirect)
   if (user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
@@ -62,6 +62,8 @@ export default function LoginPage() {
       </div>
     );
   }
+
+  // If not logged in, show login form
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--background)] p-4">
