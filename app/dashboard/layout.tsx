@@ -142,13 +142,21 @@ export default function DashboardLayout({
     ...(user?.adminLevel === 'GENERAL_SECRETARIAT' || 
         user?.adminLevel === 'ADMIN' || 
         user?.adminLevel === 'EXPATRIATE_GENERAL' || 
-        user?.adminLevel === 'EXPATRIATE_REGION' ? [
+        user?.adminLevel === 'EXPATRIATE_NATIONAL_LEVEL' ||
+        user?.adminLevel === 'EXPATRIATE_REGION' ||
+        user?.adminLevel === 'EXPATRIATE_LOCALITY' ||
+        user?.adminLevel === 'EXPATRIATE_ADMIN_UNIT' ||
+        user?.adminLevel === 'EXPATRIATE_DISTRICT' ? [
       { 
         name: "المغتربين", 
         path: "/dashboard/expatriates",
         children: [
           { name: "نظرة عامة", path: "/dashboard/expatriates" },
-          { name: "قطاعات المغتربين", path: "/dashboard/expatriates/regions" },
+          { name: "المستوى القومي", path: "/dashboard/expatriates/national-levels" },
+          { name: "القطاعات", path: "/dashboard/expatriates/regions" },
+          { name: "المحليات", path: "/dashboard/expatriates/localities" },
+          { name: "الوحدات الإدارية", path: "/dashboard/expatriates/admin-units" },
+          { name: "الأحياء", path: "/dashboard/expatriates/districts" },
         ]
       }
     ] : []),

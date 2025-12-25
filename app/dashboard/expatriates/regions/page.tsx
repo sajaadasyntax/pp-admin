@@ -27,6 +27,7 @@ interface ExpatriateRegion {
   _count?: {
     users: number;
     sectorNationalLevels: number;
+    localities: number;
   };
 }
 
@@ -574,6 +575,10 @@ export default function ExpatriateRegionsPage() {
                 <span>القطاعات: <strong>{region._count?.sectorNationalLevels || 0}</strong></span>
               </div>
 
+              <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
+                <span>المحليات: <strong>{region._count?.localities || 0}</strong></span>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => openAdminModal(region)}
@@ -581,6 +586,12 @@ export default function ExpatriateRegionsPage() {
                 >
                   👤 المشرف
                 </button>
+                <Link
+                  href={`/dashboard/expatriates/localities?regionId=${region.id}`}
+                  className="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium text-center"
+                >
+                  🏘️ المحليات
+                </Link>
                 <button
                   onClick={() => handleManageUsers(region)}
                   className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
@@ -589,7 +600,7 @@ export default function ExpatriateRegionsPage() {
                 </button>
                 <button
                   onClick={() => openCreateUserModal(region)}
-                  className="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium"
+                  className="px-3 py-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 text-sm font-medium"
                 >
                   ➕ إنشاء مستخدم
                 </button>

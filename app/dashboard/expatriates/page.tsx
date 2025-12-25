@@ -5,50 +5,56 @@ import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../config/api';
 import Link from 'next/link';
 
-interface ExpatriateRegion {
-  id: string;
-  name: string;
-  code?: string;
-  description?: string;
-  active: boolean;
-  _count?: {
-    users: number;
-    sectorNationalLevels: number;
-  };
+interface HierarchyStats {
+  nationalLevels: number;
+  regions: number;
+  localities: number;
+  adminUnits: number;
+  districts: number;
+  users: number;
 }
 
 export default function ExpatriatesPage() {
-  const { user, token } = useAuth();
-  const [regions, setRegions] = useState<ExpatriateRegion[]>([]);
+  const { token } = useAuth();
+  const [stats, setStats] = useState<HierarchyStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRegions = async () => {
+    const fetchStats = async () => {
       if (!token) {
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+        // Fetch national levels to get count
+        const nlResponse = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-national-levels`, {
+          headers: { 'Authorization': `Bearer ${token}` },
         });
+        const nlData = nlResponse.ok ? await nlResponse.json() : [];
 
-        if (response.ok) {
-          const data = await response.json();
-          setRegions(data.data || []);
-        }
+        // Fetch regions to get count
+        const regResponse = await fetch(`${apiUrl}/expatriate-hierarchy/expatriate-regions`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const regData = regResponse.ok ? await regResponse.json() : [];
+
+        setStats({
+          nationalLevels: Array.isArray(nlData) ? nlData.length : 0,
+          regions: Array.isArray(regData) ? regData.length : 0,
+          localities: 0, // Will be fetched when we have regions
+          adminUnits: 0,
+          districts: 0,
+          users: Array.isArray(regData) ? regData.reduce((sum: number, r: any) => sum + (r._count?.users || 0), 0) : 0
+        });
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error fetching stats:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRegions();
+    fetchStats();
   }, [token]);
 
   if (loading) {
@@ -59,12 +65,55 @@ export default function ExpatriatesPage() {
     );
   }
 
+  const hierarchyCards = [
+    {
+      title: 'المستوى القومي',
+      icon: '🌍',
+      href: '/dashboard/expatriates/national-levels',
+      count: stats?.nationalLevels || 0,
+      color: 'from-purple-400 to-purple-600',
+      description: 'إدارة المستويات القومية للمغتربين'
+    },
+    {
+      title: 'القطاعات',
+      icon: '✈️',
+      href: '/dashboard/expatriates/regions',
+      count: stats?.regions || 0,
+      color: 'from-cyan-400 to-cyan-600',
+      description: 'إدارة قطاعات المغتربين حول العالم'
+    },
+    {
+      title: 'المحليات',
+      icon: '🏘️',
+      href: '/dashboard/expatriates/localities',
+      count: stats?.localities || 0,
+      color: 'from-green-400 to-green-600',
+      description: 'إدارة محليات المغتربين'
+    },
+    {
+      title: 'الوحدات الإدارية',
+      icon: '🏢',
+      href: '/dashboard/expatriates/admin-units',
+      count: stats?.adminUnits || 0,
+      color: 'from-orange-400 to-orange-600',
+      description: 'إدارة الوحدات الإدارية للمغتربين'
+    },
+    {
+      title: 'الأحياء',
+      icon: '🏠',
+      href: '/dashboard/expatriates/districts',
+      count: stats?.districts || 0,
+      color: 'from-red-400 to-red-600',
+      description: 'إدارة أحياء المغتربين'
+    }
+  ];
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">المغتربين</h1>
-        <p className="text-gray-600 text-lg">إدارة قطاعات المغتربين (13 قطاع حول العالم) - نظام منفصل عن التسلسل الهرمي الجغرافي</p>
+        <p className="text-gray-600 text-lg">إدارة التسلسل الهرمي للمغتربين - نظام منفصل عن التسلسل الهرمي الجغرافي</p>
       </div>
 
       {/* Info Banner */}
@@ -74,8 +123,9 @@ export default function ExpatriatesPage() {
           <div>
             <h3 className="text-cyan-900 font-semibold text-lg mb-2">عن نظام المغتربين</h3>
             <p className="text-cyan-800">
-              نظام المغتربين هو تسلسل هرمي منفصل تماماً عن التسلسل الهرمي الجغرافي. يتضمن 13 قطاع للمغتربين حول العالم.
-              يمكن إنشاء القطاعات الأربعة (الاجتماعي، الاقتصادي، التنظيمي، السياسي) لكل قطاع من قطاعات المغتربين.
+              نظام المغتربين هو تسلسل هرمي مماثل للتسلسل الجغرافي، يتضمن 5 مستويات: 
+              المستوى القومي ← القطاعات ← المحليات ← الوحدات الإدارية ← الأحياء.
+              يمكن إدارة المستخدمين والمسؤولين والقطاعات في كل مستوى.
             </p>
           </div>
         </div>
@@ -84,84 +134,49 @@ export default function ExpatriatesPage() {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-2xl font-bold text-gray-900">{regions.length}</div>
+          <div className="text-2xl font-bold text-gray-900">{stats?.regions || 0}</div>
           <div className="text-sm text-gray-600 mt-1">إجمالي القطاعات</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-2xl font-bold text-green-600">
-            {regions.filter(r => r.active).length}
-          </div>
-          <div className="text-sm text-gray-600 mt-1">القطاعات الفعالة</div>
+          <div className="text-2xl font-bold text-green-600">{stats?.localities || 0}</div>
+          <div className="text-sm text-gray-600 mt-1">إجمالي المحليات</div>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <div className="text-2xl font-bold text-blue-600">
-            {regions.reduce((sum, r) => sum + (r._count?.users || 0), 0)}
-          </div>
+          <div className="text-2xl font-bold text-blue-600">{stats?.users || 0}</div>
           <div className="text-sm text-gray-600 mt-1">إجمالي المستخدمين</div>
         </div>
       </div>
 
-      {/* Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <Link
-          href="/dashboard/expatriates/regions"
-          className="group bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden"
-        >
-          <div className="h-2 bg-gradient-to-r from-cyan-400 to-cyan-600"></div>
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className="text-4xl">✈️</div>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-cyan-600 transition-colors">
-              إدارة قطاعات المغتربين
-            </h3>
-            <p className="text-sm text-gray-600">عرض وإدارة جميع قطاعات المغتربين الـ 13</p>
-            <div className="mt-4 flex items-center text-cyan-600 text-sm font-medium">
-              <span>إدارة</span>
-              <svg className="w-4 h-4 mr-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Regions Preview */}
-      {regions.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">قطاعات المغتربين</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {regions.slice(0, 6).map((region) => (
-              <div
-                key={region.id}
-                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">{region.name}</h3>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    region.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {region.active ? 'فعال' : 'غير فعال'}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span>المستخدمين: {region._count?.users || 0}</span>
-                </div>
+      {/* Hierarchy Level Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {hierarchyCards.map((card, index) => (
+          <Link
+            key={index}
+            href={card.href}
+            className="group bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-200 overflow-hidden"
+          >
+            <div className={`h-2 bg-gradient-to-r ${card.color}`}></div>
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-4xl">{card.icon}</div>
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {card.count}
+                </span>
               </div>
-            ))}
-          </div>
-          {regions.length > 6 && (
-            <div className="mt-4 text-center">
-              <Link
-                href="/dashboard/expatriates/regions"
-                className="text-cyan-600 hover:text-cyan-800 font-medium"
-              >
-                عرض جميع القطاعات ({regions.length})
-              </Link>
+              <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-cyan-600 transition-colors">
+                {card.title}
+              </h3>
+              <p className="text-sm text-gray-600">{card.description}</p>
+              <div className="mt-4 flex items-center text-cyan-600 text-sm font-medium">
+                <span>إدارة</span>
+                <svg className="w-4 h-4 mr-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
