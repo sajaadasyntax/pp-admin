@@ -18,7 +18,11 @@ export type AdminLevelType =
   | 'ADMIN'
   | 'NATIONAL_LEVEL'
   | 'EXPATRIATE_GENERAL'
-  | 'EXPATRIATE_REGION';
+  | 'EXPATRIATE_NATIONAL_LEVEL'
+  | 'EXPATRIATE_REGION'
+  | 'EXPATRIATE_LOCALITY'
+  | 'EXPATRIATE_ADMIN_UNIT'
+  | 'EXPATRIATE_DISTRICT';
 
 // ActiveHierarchy type matching backend schema.prisma
 export type ActiveHierarchyType = 'ORIGINAL' | 'EXPATRIATE' | 'SECTOR';
