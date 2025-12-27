@@ -446,7 +446,11 @@ export function getAdminLevelDisplayName(adminLevel: AdminLevelType): string {
     'DISTRICT': 'الحي',
     'USER': 'مستخدم',
     'EXPATRIATE_GENERAL': 'المغتربين - عام',
+    'EXPATRIATE_NATIONAL_LEVEL': 'المغتربين - المستوى القومي',
     'EXPATRIATE_REGION': 'المغتربين - الإقليم',
+    'EXPATRIATE_LOCALITY': 'المغتربين - المحلية',
+    'EXPATRIATE_ADMIN_UNIT': 'المغتربين - الوحدة الإدارية',
+    'EXPATRIATE_DISTRICT': 'المغتربين - الحي',
   };
   return levelNames[adminLevel] || 'غير محدد';
 }
