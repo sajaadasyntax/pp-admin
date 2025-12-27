@@ -254,6 +254,30 @@ export default function HierarchySelector({
         } catch {
           setSectorRegions([]);
         }
+        
+        // Load sector localities
+        try {
+          const slData = await apiCall('/sector-hierarchy/sector-localities');
+          setSectorLocalities(Array.isArray(slData) ? slData : slData.data || []);
+        } catch {
+          setSectorLocalities([]);
+        }
+        
+        // Load sector admin units
+        try {
+          const sauData = await apiCall('/sector-hierarchy/sector-admin-units');
+          setSectorAdminUnits(Array.isArray(sauData) ? sauData : sauData.data || []);
+        } catch {
+          setSectorAdminUnits([]);
+        }
+        
+        // Load sector districts
+        try {
+          const sdData = await apiCall('/sector-hierarchy/sector-districts');
+          setSectorDistricts(Array.isArray(sdData) ? sdData : sdData.data || []);
+        } catch {
+          setSectorDistricts([]);
+        }
       }
     } catch (error) {
       console.error('Error loading hierarchy data:', error);
@@ -365,11 +389,43 @@ export default function HierarchySelector({
           sectorRegionId: selectedSectorRegion.id,
           sectorRegionName: selectedSectorRegion.name,
         });
+      } else if (selectedSectorLevel === 'locality' && selectedSectorRegion && selectedSectorLocality) {
+        onSelectionChange({
+          hierarchyType: 'SECTOR',
+          level: 'locality',
+          sectorRegionId: selectedSectorRegion.id,
+          sectorRegionName: selectedSectorRegion.name,
+          sectorLocalityId: selectedSectorLocality.id,
+          sectorLocalityName: selectedSectorLocality.name,
+        });
+      } else if (selectedSectorLevel === 'adminUnit' && selectedSectorRegion && selectedSectorLocality && selectedSectorAdminUnit) {
+        onSelectionChange({
+          hierarchyType: 'SECTOR',
+          level: 'adminUnit',
+          sectorRegionId: selectedSectorRegion.id,
+          sectorRegionName: selectedSectorRegion.name,
+          sectorLocalityId: selectedSectorLocality.id,
+          sectorLocalityName: selectedSectorLocality.name,
+          sectorAdminUnitId: selectedSectorAdminUnit.id,
+          sectorAdminUnitName: selectedSectorAdminUnit.name,
+        });
+      } else if (selectedSectorLevel === 'district' && selectedSectorRegion && selectedSectorLocality && selectedSectorAdminUnit && selectedSectorDistrict) {
+        onSelectionChange({
+          hierarchyType: 'SECTOR',
+          level: 'district',
+          sectorRegionId: selectedSectorRegion.id,
+          sectorRegionName: selectedSectorRegion.name,
+          sectorLocalityId: selectedSectorLocality.id,
+          sectorLocalityName: selectedSectorLocality.name,
+          sectorAdminUnitId: selectedSectorAdminUnit.id,
+          sectorAdminUnitName: selectedSectorAdminUnit.name,
+          sectorDistrictId: selectedSectorDistrict.id,
+          sectorDistrictName: selectedSectorDistrict.name,
+        });
       }
-      // Add more sector levels as needed
     }
     setIsExpanded(false);
-  }, [hierarchyType, selectedLevel, selectedNationalLevel, selectedRegion, selectedLocality, selectedAdminUnit, selectedDistrict, selectedExpatriateRegion, selectedSectorLevel, selectedSectorNationalLevel, selectedSectorRegion, onSelectionChange]);
+  }, [hierarchyType, selectedLevel, selectedNationalLevel, selectedRegion, selectedLocality, selectedAdminUnit, selectedDistrict, selectedExpatriateRegion, selectedSectorLevel, selectedSectorNationalLevel, selectedSectorRegion, selectedSectorLocality, selectedSectorAdminUnit, selectedSectorDistrict, onSelectionChange]);
 
   // Handle selection changes
   const handleNationalLevelSelect = (nl: NationalLevel) => {
@@ -433,6 +489,15 @@ export default function HierarchySelector({
       }
       if (selectedSectorLevel === 'region' && selectedSectorRegion) {
         return `💼 ${selectedSectorRegion.name}`;
+      }
+      if (selectedSectorLevel === 'locality' && selectedSectorLocality) {
+        return `💼 ${selectedSectorLocality.name}`;
+      }
+      if (selectedSectorLevel === 'adminUnit' && selectedSectorAdminUnit) {
+        return `💼 ${selectedSectorAdminUnit.name}`;
+      }
+      if (selectedSectorLevel === 'district' && selectedSectorDistrict) {
+        return `💼 ${selectedSectorDistrict.name}`;
       }
       return 'اختر تسلسل القطاع';
     }
@@ -883,6 +948,9 @@ export default function HierarchySelector({
                         type="button"
                         onClick={() => {
                           setSelectedSectorRegion(sr);
+                          setSelectedSectorLocality(null);
+                          setSelectedSectorAdminUnit(null);
+                          setSelectedSectorDistrict(null);
                           setTimeout(notifySelectionChange, 0);
                         }}
                         className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
@@ -897,9 +965,221 @@ export default function HierarchySelector({
                   )
                 )}
 
-                {(selectedSectorLevel === 'locality' || selectedSectorLevel === 'adminUnit' || selectedSectorLevel === 'district') && (
-                  <div className="p-4 text-center text-gray-500">
-                    يرجى اختيار المستوى الأعلى أولاً
+                {selectedSectorLevel === 'locality' && (
+                  <div>
+                    {/* First select sector region */}
+                    <div className="mb-2 text-xs text-gray-500">اختر الإقليم أولاً:</div>
+                    {sectorRegions.map((sr) => (
+                      <div key={sr.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSectorRegion(sr);
+                            setSelectedSectorLocality(null);
+                          }}
+                          className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                            selectedSectorRegion?.id === sr.id
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          🏛️ {sr.name}
+                        </button>
+                        {selectedSectorRegion?.id === sr.id && (
+                          <div className="mr-4 mt-1">
+                            {sectorLocalities.filter(sl => (sl as any).sectorRegionId === sr.id).length === 0 ? (
+                              <div className="p-2 text-xs text-gray-400">لا توجد محليات في هذا الإقليم</div>
+                            ) : (
+                              sectorLocalities.filter(sl => (sl as any).sectorRegionId === sr.id).map((sl) => (
+                                <button
+                                  key={sl.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSectorLocality(sl);
+                                    setTimeout(notifySelectionChange, 0);
+                                  }}
+                                  className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                    selectedSectorLocality?.id === sl.id
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'hover:bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  🏘️ {sl.name}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedSectorLevel === 'adminUnit' && (
+                  <div>
+                    <div className="mb-2 text-xs text-gray-500">اختر التسلسل:</div>
+                    {sectorRegions.map((sr) => (
+                      <div key={sr.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSectorRegion(sr);
+                            setSelectedSectorLocality(null);
+                            setSelectedSectorAdminUnit(null);
+                          }}
+                          className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                            selectedSectorRegion?.id === sr.id
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          🏛️ {sr.name}
+                        </button>
+                        {selectedSectorRegion?.id === sr.id && (
+                          <div className="mr-4 mt-1">
+                            {sectorLocalities.filter(sl => (sl as any).sectorRegionId === sr.id).map((sl) => (
+                              <div key={sl.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSectorLocality(sl);
+                                    setSelectedSectorAdminUnit(null);
+                                  }}
+                                  className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                    selectedSectorLocality?.id === sl.id
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'hover:bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  🏘️ {sl.name}
+                                </button>
+                                {selectedSectorLocality?.id === sl.id && (
+                                  <div className="mr-4 mt-1">
+                                    {sectorAdminUnits.filter(sau => (sau as any).sectorLocalityId === sl.id).length === 0 ? (
+                                      <div className="p-2 text-xs text-gray-400">لا توجد وحدات إدارية</div>
+                                    ) : (
+                                      sectorAdminUnits.filter(sau => (sau as any).sectorLocalityId === sl.id).map((sau) => (
+                                        <button
+                                          key={sau.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedSectorAdminUnit(sau);
+                                            setTimeout(notifySelectionChange, 0);
+                                          }}
+                                          className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                            selectedSectorAdminUnit?.id === sau.id
+                                              ? 'bg-orange-100 text-orange-800'
+                                              : 'hover:bg-gray-100 text-gray-700'
+                                          }`}
+                                        >
+                                          🏢 {sau.name}
+                                        </button>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedSectorLevel === 'district' && (
+                  <div>
+                    <div className="mb-2 text-xs text-gray-500">اختر التسلسل:</div>
+                    {sectorRegions.map((sr) => (
+                      <div key={sr.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSectorRegion(sr);
+                            setSelectedSectorLocality(null);
+                            setSelectedSectorAdminUnit(null);
+                            setSelectedSectorDistrict(null);
+                          }}
+                          className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                            selectedSectorRegion?.id === sr.id
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          🏛️ {sr.name}
+                        </button>
+                        {selectedSectorRegion?.id === sr.id && (
+                          <div className="mr-4 mt-1">
+                            {sectorLocalities.filter(sl => (sl as any).sectorRegionId === sr.id).map((sl) => (
+                              <div key={sl.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSectorLocality(sl);
+                                    setSelectedSectorAdminUnit(null);
+                                    setSelectedSectorDistrict(null);
+                                  }}
+                                  className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                    selectedSectorLocality?.id === sl.id
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'hover:bg-gray-100 text-gray-700'
+                                  }`}
+                                >
+                                  🏘️ {sl.name}
+                                </button>
+                                {selectedSectorLocality?.id === sl.id && (
+                                  <div className="mr-4 mt-1">
+                                    {sectorAdminUnits.filter(sau => (sau as any).sectorLocalityId === sl.id).map((sau) => (
+                                      <div key={sau.id}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedSectorAdminUnit(sau);
+                                            setSelectedSectorDistrict(null);
+                                          }}
+                                          className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                            selectedSectorAdminUnit?.id === sau.id
+                                              ? 'bg-orange-100 text-orange-800'
+                                              : 'hover:bg-gray-100 text-gray-700'
+                                          }`}
+                                        >
+                                          🏢 {sau.name}
+                                        </button>
+                                        {selectedSectorAdminUnit?.id === sau.id && (
+                                          <div className="mr-4 mt-1">
+                                            {sectorDistricts.filter(sd => (sd as any).sectorAdminUnitId === sau.id).length === 0 ? (
+                                              <div className="p-2 text-xs text-gray-400">لا توجد أحياء</div>
+                                            ) : (
+                                              sectorDistricts.filter(sd => (sd as any).sectorAdminUnitId === sau.id).map((sd) => (
+                                                <button
+                                                  key={sd.id}
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setSelectedSectorDistrict(sd);
+                                                    setTimeout(notifySelectionChange, 0);
+                                                  }}
+                                                  className={`w-full rounded-lg p-2 text-right text-sm transition-colors mb-1 ${
+                                                    selectedSectorDistrict?.id === sd.id
+                                                      ? 'bg-red-100 text-red-800'
+                                                      : 'hover:bg-gray-100 text-gray-700'
+                                                  }`}
+                                                >
+                                                  🏠 {sd.name}
+                                                </button>
+                                              ))
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
