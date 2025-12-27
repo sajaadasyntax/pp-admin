@@ -388,7 +388,11 @@ export function canUserCreateAtLevel(
     'DISTRICT': 4,
     'USER': 5,
     'EXPATRIATE_GENERAL': 0,
+    'EXPATRIATE_NATIONAL_LEVEL': 0,
     'EXPATRIATE_REGION': 1,
+    'EXPATRIATE_LOCALITY': 2,
+    'EXPATRIATE_ADMIN_UNIT': 3,
+    'EXPATRIATE_DISTRICT': 4,
   };
 
   const userLevelIndex = adminLevelToIndex[user.adminLevel] ?? 5;
@@ -401,7 +405,12 @@ export function canUserCreateAtLevel(
 
   if (targetHierarchyType === 'EXPATRIATE') {
     // Expatriate admins can create expatriate content
-    if (user.adminLevel === 'EXPATRIATE_GENERAL' || user.adminLevel === 'EXPATRIATE_REGION') {
+    if (user.adminLevel === 'EXPATRIATE_GENERAL' || 
+        user.adminLevel === 'EXPATRIATE_NATIONAL_LEVEL' ||
+        user.adminLevel === 'EXPATRIATE_REGION' ||
+        user.adminLevel === 'EXPATRIATE_LOCALITY' ||
+        user.adminLevel === 'EXPATRIATE_ADMIN_UNIT' ||
+        user.adminLevel === 'EXPATRIATE_DISTRICT') {
       return true;
     }
     // Only top-level general admins (index 0) can create expatriate content
