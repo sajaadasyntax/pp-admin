@@ -433,7 +433,20 @@ export default function AdminUnitsPage() {
         const allSectors = data.data || [];
         const adminUnitSectors = allSectors.filter((sector: Sector) => {
           if (!sector.description) return false;
-          return sector.description.includes(`SOURCE:adminUnit:${adminUnit.id}`);
+          // Support both JSON format and legacy format
+          try {
+            // Try parsing as JSON first (new format)
+            const metadata = JSON.parse(sector.description);
+            if (metadata.sourceEntityId === adminUnit.id && metadata.sourceEntityType === 'adminUnit') {
+              return true;
+            }
+          } catch {
+            // Fallback to legacy format check
+            if (sector.description.includes(`SOURCE:adminUnit:${adminUnit.id}`)) {
+              return true;
+            }
+          }
+          return false;
         });
         setSectors(adminUnitSectors);
       }

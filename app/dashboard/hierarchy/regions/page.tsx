@@ -363,7 +363,20 @@ export default function RegionsPage() {
         const allSectors = data.data || [];
         const regionSectors = allSectors.filter((sector: Sector) => {
           if (!sector.description) return false;
-          return sector.description.includes(`SOURCE:region:${region.id}`);
+          // Support both JSON format and legacy format
+          try {
+            // Try parsing as JSON first (new format)
+            const metadata = JSON.parse(sector.description);
+            if (metadata.sourceEntityId === region.id && metadata.sourceEntityType === 'region') {
+              return true;
+            }
+          } catch {
+            // Fallback to legacy format check
+            if (sector.description.includes(`SOURCE:region:${region.id}`)) {
+              return true;
+            }
+          }
+          return false;
         });
         setSectors(regionSectors);
       }

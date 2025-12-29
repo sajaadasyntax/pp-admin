@@ -405,7 +405,20 @@ export default function LocalitiesPage() {
         // Filter sectors that belong to this locality using the description metadata
         const localitySectors = allSectors.filter((sector: Sector) => {
           if (!sector.description) return false;
-          return sector.description.includes(`SOURCE:locality:${locality.id}`);
+          // Support both JSON format and legacy format
+          try {
+            // Try parsing as JSON first (new format)
+            const metadata = JSON.parse(sector.description);
+            if (metadata.sourceEntityId === locality.id && metadata.sourceEntityType === 'locality') {
+              return true;
+            }
+          } catch {
+            // Fallback to legacy format check
+            if (sector.description.includes(`SOURCE:locality:${locality.id}`)) {
+              return true;
+            }
+          }
+          return false;
         });
         setSectors(localitySectors);
       }
