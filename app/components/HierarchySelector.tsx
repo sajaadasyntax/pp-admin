@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../config/api';
+import { canUserCreateAtLevel, isRootAdmin } from '../utils/hierarchyUtils';
 
 // Types for hierarchy data - Original
 interface Region {
@@ -170,7 +171,12 @@ export default function HierarchySelector({
   const [selectedSectorAdminUnit, setSelectedSectorAdminUnit] = useState<SectorAdminUnit | null>(null);
   const [selectedSectorDistrict, setSelectedSectorDistrict] = useState<SectorDistrict | null>(null);
 
-  const { token: authToken } = useAuth();
+  const { token: authToken, user } = useAuth();
+  const rootAdmin = isRootAdmin(user);
+  const canGlobal = canUserCreateAtLevel(user, 'GLOBAL', 'nationalLevel');
+  const canOriginal = canUserCreateAtLevel(user, 'ORIGINAL', 'region');
+  const canExpatriate = canUserCreateAtLevel(user, 'EXPATRIATE', 'expatriateRegion');
+  const canSector = canUserCreateAtLevel(user, 'SECTOR', 'region');
   
   // API helper function
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
@@ -286,6 +292,60 @@ export default function HierarchySelector({
       setLoading(false);
     }
   }, [apiCall, hierarchyType]);
+
+  // Filter hierarchy lists to user's scope for non-root admins
+  const filteredRegions = useMemo(() => {
+    if (!user || rootAdmin) return regions;
+    if (user.regionId) return regions.filter((r) => r.id === user.regionId);
+    return regions;
+  }, [regions, user, rootAdmin]);
+
+  const filteredExpatriateRegions = useMemo(() => {
+    if (!user || rootAdmin) return expatriateRegions;
+    if (user.expatriateRegionId) return expatriateRegions.filter((r) => r.id === user.expatriateRegionId);
+    return expatriateRegions;
+  }, [expatriateRegions, user, rootAdmin]);
+
+  const filteredSectorRegions = useMemo(() => {
+    if (!user || rootAdmin) return sectorRegions;
+    if (user.sectorRegionId) return sectorRegions.filter((r) => r.id === user.sectorRegionId);
+    return sectorRegions;
+  }, [sectorRegions, user, rootAdmin]);
+
+  const filteredSectorNationalLevels = useMemo(() => {
+    if (!user || rootAdmin) return sectorNationalLevels;
+    if (user.sectorNationalLevelId) return sectorNationalLevels.filter((nl) => nl.id === user.sectorNationalLevelId);
+    return sectorNationalLevels;
+  }, [sectorNationalLevels, user, rootAdmin]);
+
+  // When user has no access to current hierarchy type, switch to first allowed type
+  useEffect(() => {
+    const allowed =
+      (hierarchyType === 'GLOBAL' && canGlobal) ||
+      (hierarchyType === 'ORIGINAL' && canOriginal) ||
+      (hierarchyType === 'EXPATRIATE' && canExpatriate) ||
+      (hierarchyType === 'SECTOR' && canSector);
+    if (!allowed) {
+      if (canOriginal) setHierarchyType('ORIGINAL');
+      else if (canExpatriate) setHierarchyType('EXPATRIATE');
+      else if (canSector) setHierarchyType('SECTOR');
+      else if (canGlobal) setHierarchyType('GLOBAL');
+    }
+  }, [hierarchyType, canGlobal, canOriginal, canExpatriate, canSector]);
+
+  // Pre-select user's single region/expatriate region when scope is locked (non-root admin)
+  useEffect(() => {
+    if (rootAdmin) return;
+    if (hierarchyType === 'ORIGINAL' && user?.regionId && filteredRegions.length === 1 && !selectedRegion) {
+      setSelectedRegion(filteredRegions[0]);
+    }
+    if (hierarchyType === 'EXPATRIATE' && user?.expatriateRegionId && filteredExpatriateRegions.length === 1 && !selectedExpatriateRegion) {
+      setSelectedExpatriateRegion(filteredExpatriateRegions[0]);
+    }
+    if (hierarchyType === 'SECTOR' && user?.sectorRegionId && filteredSectorRegions.length === 1 && !selectedSectorRegion) {
+      setSelectedSectorRegion(filteredSectorRegions[0]);
+    }
+  }, [hierarchyType, rootAdmin, user, filteredRegions, filteredExpatriateRegions, filteredSectorRegions, selectedRegion, selectedExpatriateRegion, selectedSectorRegion]);
 
   // Load data when hierarchy type changes
   useEffect(() => {
@@ -526,8 +586,13 @@ export default function HierarchySelector({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           نوع التسلسل الهرمي
         </label>
+        {!rootAdmin && user && hierarchyType !== 'GLOBAL' && (
+          <p className="text-xs text-gray-500 mb-2" role="status">
+            نطاق الاستهداف محدد بمستواك الإداري
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {showGlobalOption && (
+          {showGlobalOption && canGlobal && (
             <button
               type="button"
               onClick={() => !disabled && setHierarchyType('GLOBAL')}
@@ -542,45 +607,51 @@ export default function HierarchySelector({
               <div>عالمي</div>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => !disabled && setHierarchyType('ORIGINAL')}
-            disabled={disabled}
-            className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
-              hierarchyType === 'ORIGINAL'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="text-lg">🏛️</div>
-            <div>جغرافي</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => !disabled && setHierarchyType('EXPATRIATE')}
-            disabled={disabled}
-            className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
-              hierarchyType === 'EXPATRIATE'
-                ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="text-lg">✈️</div>
-            <div>المغتربين</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => !disabled && setHierarchyType('SECTOR')}
-            disabled={disabled}
-            className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
-              hierarchyType === 'SECTOR'
-                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="text-lg">💼</div>
-            <div>القطاع</div>
-          </button>
+          {canOriginal && (
+            <button
+              type="button"
+              onClick={() => !disabled && setHierarchyType('ORIGINAL')}
+              disabled={disabled}
+              className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
+                hierarchyType === 'ORIGINAL'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className="text-lg">🏛️</div>
+              <div>جغرافي</div>
+            </button>
+          )}
+          {canExpatriate && (
+            <button
+              type="button"
+              onClick={() => !disabled && setHierarchyType('EXPATRIATE')}
+              disabled={disabled}
+              className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
+                hierarchyType === 'EXPATRIATE'
+                  ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className="text-lg">✈️</div>
+              <div>المغتربين</div>
+            </button>
+          )}
+          {canSector && (
+            <button
+              type="button"
+              onClick={() => !disabled && setHierarchyType('SECTOR')}
+              disabled={disabled}
+              className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
+                hierarchyType === 'SECTOR'
+                  ? 'border-purple-500 bg-purple-50 text-purple-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className="text-lg">💼</div>
+              <div>القطاع</div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -690,12 +761,12 @@ export default function HierarchySelector({
                 {/* Region and below Selection */}
                 {selectedLevel !== 'nationalLevel' && (
                   <div className="p-2">
-                    {regions.length === 0 ? (
+                    {filteredRegions.length === 0 ? (
                       <div className="p-4 text-center text-gray-500">
                         لا توجد بيانات تسلسل إداري متاحة
                       </div>
                     ) : (
-                      regions.map((region) => (
+                      filteredRegions.map((region) => (
                         <div key={region.id} className="mb-2">
                           {/* Region Level */}
                           <button
@@ -826,12 +897,12 @@ export default function HierarchySelector({
 
           {isExpanded && (
             <div className="mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg p-2">
-              {expatriateRegions.length === 0 ? (
+              {filteredExpatriateRegions.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
                   لا توجد أقاليم مغتربين متاحة
                 </div>
               ) : (
-                expatriateRegions.map((expRegion) => (
+                filteredExpatriateRegions.map((expRegion) => (
                   <button
                     key={expRegion.id}
                     type="button"
@@ -911,12 +982,12 @@ export default function HierarchySelector({
             {isExpanded && (
               <div className="mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg p-2">
                 {selectedSectorLevel === 'nationalLevel' && (
-                  sectorNationalLevels.length === 0 ? (
+                  filteredSectorNationalLevels.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                       لا توجد مستويات قطاع قومية متاحة
                     </div>
                   ) : (
-                    sectorNationalLevels.map((snl) => (
+                    filteredSectorNationalLevels.map((snl) => (
                       <button
                         key={snl.id}
                         type="button"
@@ -937,12 +1008,12 @@ export default function HierarchySelector({
                 )}
 
                 {selectedSectorLevel === 'region' && (
-                  sectorRegions.length === 0 ? (
+                  filteredSectorRegions.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                       لا توجد أقاليم قطاع متاحة
                     </div>
                   ) : (
-                    sectorRegions.map((sr) => (
+                    filteredSectorRegions.map((sr) => (
                       <button
                         key={sr.id}
                         type="button"
@@ -969,7 +1040,7 @@ export default function HierarchySelector({
                   <div>
                     {/* First select sector region */}
                     <div className="mb-2 text-xs text-gray-500">اختر الإقليم أولاً:</div>
-                    {sectorRegions.map((sr) => (
+                    {filteredSectorRegions.map((sr) => (
                       <div key={sr.id}>
                         <button
                           type="button"
@@ -1018,7 +1089,7 @@ export default function HierarchySelector({
                 {selectedSectorLevel === 'adminUnit' && (
                   <div>
                     <div className="mb-2 text-xs text-gray-500">اختر التسلسل:</div>
-                    {sectorRegions.map((sr) => (
+                    {filteredSectorRegions.map((sr) => (
                       <div key={sr.id}>
                         <button
                           type="button"
@@ -1090,7 +1161,7 @@ export default function HierarchySelector({
                 {selectedSectorLevel === 'district' && (
                   <div>
                     <div className="mb-2 text-xs text-gray-500">اختر التسلسل:</div>
-                    {sectorRegions.map((sr) => (
+                    {filteredSectorRegions.map((sr) => (
                       <div key={sr.id}>
                         <button
                           type="button"

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../config/api';
 import HierarchySelector, { HierarchySelection } from '../../../components/HierarchySelector';
+import { getUserHierarchySelection, getFormDataWithHierarchy } from '../../../utils/hierarchyUtils';
 
 type SurveyQuestion = {
   id: number;
@@ -41,6 +42,16 @@ export default function CreateSurveyPage() {
 
   // Hierarchy selection state
   const [hierarchySelection, setHierarchySelection] = useState<HierarchySelection | null>(null);
+
+  // Auto-populate hierarchy based on user's level (same as bulletin and voting)
+  useEffect(() => {
+    if (user) {
+      const userHierarchy = getUserHierarchySelection(user);
+      if (userHierarchy) {
+        setHierarchySelection(userHierarchy);
+      }
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -144,7 +155,7 @@ export default function CreateSurveyPage() {
       setLoading(true);
       setError(null);
 
-      const surveyData: any = {
+      const baseData = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
@@ -157,46 +168,7 @@ export default function CreateSurveyPage() {
           options: q.type === 'multiple_choice' || q.type === 'single_choice' ? q.options.filter(opt => opt.trim()) : []
         })),
       };
-
-      // Add hierarchy targeting based on selection type
-      if (hierarchySelection.hierarchyType === 'ORIGINAL') {
-        if (hierarchySelection.nationalLevelId) {
-          surveyData.targetNationalLevelId = hierarchySelection.nationalLevelId;
-        }
-        if (hierarchySelection.regionId) {
-          surveyData.targetRegionId = hierarchySelection.regionId;
-        }
-        if (hierarchySelection.localityId) {
-          surveyData.targetLocalityId = hierarchySelection.localityId;
-        }
-        if (hierarchySelection.adminUnitId) {
-          surveyData.targetAdminUnitId = hierarchySelection.adminUnitId;
-        }
-        if (hierarchySelection.districtId) {
-          surveyData.targetDistrictId = hierarchySelection.districtId;
-        }
-      } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
-        if (hierarchySelection.expatriateRegionId) {
-          surveyData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
-        }
-      } else if (hierarchySelection.hierarchyType === 'SECTOR') {
-        if (hierarchySelection.sectorNationalLevelId) {
-          surveyData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
-        }
-        if (hierarchySelection.sectorRegionId) {
-          surveyData.targetSectorRegionId = hierarchySelection.sectorRegionId;
-        }
-        if (hierarchySelection.sectorLocalityId) {
-          surveyData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
-        }
-        if (hierarchySelection.sectorAdminUnitId) {
-          surveyData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
-        }
-        if (hierarchySelection.sectorDistrictId) {
-          surveyData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
-        }
-      }
-      // GLOBAL type doesn't add any targeting - content is visible to everyone
+      const surveyData: any = getFormDataWithHierarchy(hierarchySelection, baseData);
 
       const response = await fetch(`${apiUrl}/content/surveys`, {
         method: 'POST',

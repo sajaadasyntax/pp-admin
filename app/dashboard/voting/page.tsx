@@ -6,7 +6,7 @@ import { Voting } from "../../types";
 import { UserLevel } from "../../context/AuthContext";
 import { apiClient } from "../../context/apiContext";
 import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
-import { getUserHierarchySelection, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
+import { getUserHierarchySelection, getFormDataWithHierarchy, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
 
 export default function VotingPage() {
   const { user, token } = useAuth();
@@ -174,8 +174,7 @@ export default function VotingPage() {
       return;
     }
 
-    // Create voting data object
-    const votingData: any = {
+    const baseData = {
       title: newVotingTitle,
       description: newVotingDescription,
       options: newVotingOptions.map(opt => ({ text: opt })),
@@ -184,46 +183,7 @@ export default function VotingPage() {
       targetLevel: targetLevel as UserLevel,
       voteType,
     };
-    
-    // Add hierarchy targeting based on selection type
-    if (hierarchySelection.hierarchyType === 'ORIGINAL') {
-      if (hierarchySelection.nationalLevelId) {
-        votingData.targetNationalLevelId = hierarchySelection.nationalLevelId;
-      }
-      if (hierarchySelection.regionId) {
-        votingData.targetRegionId = hierarchySelection.regionId;
-      }
-      if (hierarchySelection.localityId) {
-        votingData.targetLocalityId = hierarchySelection.localityId;
-      }
-      if (hierarchySelection.adminUnitId) {
-        votingData.targetAdminUnitId = hierarchySelection.adminUnitId;
-      }
-      if (hierarchySelection.districtId) {
-        votingData.targetDistrictId = hierarchySelection.districtId;
-      }
-    } else if (hierarchySelection.hierarchyType === 'EXPATRIATE') {
-      if (hierarchySelection.expatriateRegionId) {
-        votingData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
-      }
-    } else if (hierarchySelection.hierarchyType === 'SECTOR') {
-      if (hierarchySelection.sectorNationalLevelId) {
-        votingData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
-      }
-      if (hierarchySelection.sectorRegionId) {
-        votingData.targetSectorRegionId = hierarchySelection.sectorRegionId;
-      }
-      if (hierarchySelection.sectorLocalityId) {
-        votingData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
-      }
-      if (hierarchySelection.sectorAdminUnitId) {
-        votingData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
-      }
-      if (hierarchySelection.sectorDistrictId) {
-        votingData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
-      }
-    }
-    // GLOBAL type doesn't add any targeting - content is visible to everyone
+    const votingData: any = getFormDataWithHierarchy(hierarchySelection, baseData);
 
     try {
       setLoading(true);

@@ -6,7 +6,7 @@ import { Bulletin, BulletinAttachment } from "../../types";
 import { apiClient, PUBLIC_URL } from "../../context/apiContext";
 import Image from "next/image";
 import HierarchySelector, { HierarchySelection } from "../../components/HierarchySelector";
-import { getUserHierarchySelection, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
+import { getUserHierarchySelection, getFormDataWithHierarchy, getUserHierarchyDisplayText } from '../../utils/hierarchyUtils';
 
 export default function BulletinPage() {
   const { user, token } = useAuth();
@@ -235,54 +235,14 @@ export default function BulletinPage() {
       // Log hierarchy selection for debugging
       console.log("Hierarchy selection:", hierarchySelection);
       
-      // Prepare form data based on hierarchy type
-      const bulletinData: any = {
+      const baseData = {
         title: bulletinTitle,
         content: bulletinContent,
         date: publishDate,
         published: true,
       };
-      
-      // Add hierarchy targeting based on selection type
-      if (hierarchySelection?.hierarchyType === 'ORIGINAL') {
-        if (hierarchySelection.nationalLevelId) {
-          bulletinData.targetNationalLevelId = hierarchySelection.nationalLevelId;
-        }
-        if (hierarchySelection.regionId) {
-          bulletinData.targetRegionId = hierarchySelection.regionId;
-        }
-        if (hierarchySelection.localityId) {
-          bulletinData.targetLocalityId = hierarchySelection.localityId;
-        }
-        if (hierarchySelection.adminUnitId) {
-          bulletinData.targetAdminUnitId = hierarchySelection.adminUnitId;
-        }
-        if (hierarchySelection.districtId) {
-          bulletinData.targetDistrictId = hierarchySelection.districtId;
-        }
-      } else if (hierarchySelection?.hierarchyType === 'EXPATRIATE') {
-        if (hierarchySelection.expatriateRegionId) {
-          bulletinData.targetExpatriateRegionId = hierarchySelection.expatriateRegionId;
-        }
-      } else if (hierarchySelection?.hierarchyType === 'SECTOR') {
-        if (hierarchySelection.sectorNationalLevelId) {
-          bulletinData.targetSectorNationalLevelId = hierarchySelection.sectorNationalLevelId;
-        }
-        if (hierarchySelection.sectorRegionId) {
-          bulletinData.targetSectorRegionId = hierarchySelection.sectorRegionId;
-        }
-        if (hierarchySelection.sectorLocalityId) {
-          bulletinData.targetSectorLocalityId = hierarchySelection.sectorLocalityId;
-        }
-        if (hierarchySelection.sectorAdminUnitId) {
-          bulletinData.targetSectorAdminUnitId = hierarchySelection.sectorAdminUnitId;
-        }
-        if (hierarchySelection.sectorDistrictId) {
-          bulletinData.targetSectorDistrictId = hierarchySelection.sectorDistrictId;
-        }
-      }
-      // GLOBAL type doesn't add any targeting - content is visible to everyone
-      
+      const bulletinData: any = getFormDataWithHierarchy(hierarchySelection, baseData);
+
       // Log the bulletin data before sending
       console.log("Bulletin data to submit:", bulletinData);
       

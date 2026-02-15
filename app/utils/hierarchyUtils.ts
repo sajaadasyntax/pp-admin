@@ -361,6 +361,18 @@ export function getUserHierarchyDisplayText(user: User | null): string {
 }
 
 /**
+ * Whether the user is a root admin who can see and target any hierarchy (ADMIN, GENERAL_SECRETARIAT, NATIONAL_LEVEL).
+ */
+export function isRootAdmin(user: User | null): boolean {
+  if (!user) return false;
+  return (
+    user.adminLevel === 'ADMIN' ||
+    user.adminLevel === 'GENERAL_SECRETARIAT' ||
+    user.adminLevel === 'NATIONAL_LEVEL'
+  );
+}
+
+/**
  * Check if user can create content at a specific hierarchy level
  */
 export function canUserCreateAtLevel(
