@@ -232,7 +232,8 @@ export interface BulletinData {
   id?: string;
   title: string;
   content: string;
-  targetRegionId: string;
+  targetRegionId?: string;
+  isGlobal?: boolean;
   [key: string]: unknown;
 }
 

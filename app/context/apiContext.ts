@@ -217,24 +217,24 @@ export const apiClient = {
       return handleResponse(response);
     },
     createBulletin: async (token: string, bulletinData: BulletinData, imageFile?: File) => {
-      // CRITICAL: Make sure targetRegionId is always set
-      if (!bulletinData.targetRegionId) {
-        throw new Error("targetRegionId is required for creating bulletins. Please select a target region.");
+      // Validate that some hierarchy targeting is provided
+      const hasHierarchy = bulletinData.targetRegionId || bulletinData.targetNationalLevelId ||
+        bulletinData.targetExpatriateRegionId || bulletinData.targetSectorRegionId ||
+        bulletinData.targetSectorNationalLevelId || bulletinData.isGlobal;
+      if (!hasHierarchy) {
+        throw new Error("Hierarchy targeting is required for creating bulletins. Please select a target scope.");
       }
-      
+
+      // Build data to send (stringify targetRegionId only when present)
+      const dataToSend = { ...bulletinData };
+      if (dataToSend.targetRegionId) {
+        dataToSend.targetRegionId = String(dataToSend.targetRegionId);
+      }
+
       // If no image file, use the standard JSON request
       if (!imageFile) {
-        // Ensure regionId is properly included
-        console.log('Creating bulletin with data (no image):', bulletinData);
-        
-        // Double-check targetRegionId is present and is a string
-        const dataToSend = {
-          ...bulletinData,
-          targetRegionId: String(bulletinData.targetRegionId),
-        };
-        
-        console.log("FINAL DATA TO SEND:", dataToSend);
-        
+        console.log('Creating bulletin with data (no image):', dataToSend);
+
         const response = await fetch(`${apiUrl}/content/bulletins`, {
           method: 'POST',
           headers: {
@@ -245,21 +245,10 @@ export const apiClient = {
         });
         return handleResponse(response);
       }
-      
+
       // If image file exists, use FormData for multipart/form-data
       const formData = new FormData();
-      
-      // Make sure we're including the bulletin data
-      console.log('Creating bulletin with data (with image):', bulletinData);
-      
-      // Double-check targetRegionId is present and is a string
-      const dataToSend = {
-        ...bulletinData,
-        targetRegionId: String(bulletinData.targetRegionId),
-      };
-      
-      console.log("FINAL DATA TO SEND (with image):", dataToSend);
-      
+      console.log('Creating bulletin with data (with image):', dataToSend);
       formData.append('bulletinData', JSON.stringify(dataToSend));
       formData.append('image', imageFile);
       
@@ -273,24 +262,23 @@ export const apiClient = {
       return handleResponse(response);
     },
     updateBulletin: async (token: string, bulletinId: string, bulletinData: BulletinData, imageFile?: File) => {
-      // CRITICAL: Make sure targetRegionId is always set
-      if (!bulletinData.targetRegionId) {
-        throw new Error("targetRegionId is required for updating bulletins. Please select a target region.");
+      // Validate that some hierarchy targeting is provided
+      const hasHierarchy = bulletinData.targetRegionId || bulletinData.targetNationalLevelId ||
+        bulletinData.targetExpatriateRegionId || bulletinData.targetSectorRegionId ||
+        bulletinData.targetSectorNationalLevelId || bulletinData.isGlobal;
+      if (!hasHierarchy) {
+        throw new Error("Hierarchy targeting is required for updating bulletins. Please select a target scope.");
       }
-      
+
+      const dataToSend = { ...bulletinData };
+      if (dataToSend.targetRegionId) {
+        dataToSend.targetRegionId = String(dataToSend.targetRegionId);
+      }
+
       // If no image file, use the standard JSON request
       if (!imageFile) {
-        // Ensure regionId is properly included
-        console.log('Updating bulletin with data (no image):', bulletinData);
-        
-        // Double-check targetRegionId is present and is a string
-        const dataToSend = {
-          ...bulletinData,
-          targetRegionId: String(bulletinData.targetRegionId),
-        };
-        
-        console.log("FINAL UPDATE DATA TO SEND:", dataToSend);
-        
+        console.log('Updating bulletin with data (no image):', dataToSend);
+
         const response = await fetch(`${apiUrl}/content/bulletins/${bulletinId}`, {
           method: 'PUT',
           headers: {
@@ -301,24 +289,13 @@ export const apiClient = {
         });
         return handleResponse(response);
       }
-      
+
       // If image file exists, use FormData for multipart/form-data
       const formData = new FormData();
-      
-      // Make sure we're including the bulletin data
-      console.log('Updating bulletin with data (with image):', bulletinData);
-      
-      // Double-check targetRegionId is present and is a string
-      const dataToSend = {
-        ...bulletinData,
-        targetRegionId: String(bulletinData.targetRegionId),
-      };
-      
-      console.log("FINAL UPDATE DATA TO SEND (with image):", dataToSend);
-      
+      console.log('Updating bulletin with data (with image):', dataToSend);
       formData.append('bulletinData', JSON.stringify(dataToSend));
       formData.append('image', imageFile);
-      
+
       const response = await fetch(`${apiUrl}/content/bulletins/${bulletinId}`, {
         method: 'PUT',
         headers: {

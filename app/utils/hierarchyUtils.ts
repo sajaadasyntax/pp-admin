@@ -308,7 +308,9 @@ export function getFormDataWithHierarchy(selection: HierarchySelection | null, b
       hierarchyFormData.targetSectorDistrictId = selection.sectorDistrictId;
     }
   }
-  // GLOBAL hierarchy type doesn't add any targeting fields
+  if (selection.hierarchyType === 'GLOBAL') {
+    hierarchyFormData.isGlobal = true;
+  }
 
   return {
     ...baseFormData,
