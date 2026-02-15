@@ -435,35 +435,46 @@ export function canUserCreateAtLevel(
 /**
  * Get the admin level display name in Arabic
  */
+// ─── Canonical labels (must match Backend & Mobile) ──────────────────
+export const ADMIN_LEVEL_LABELS: Record<string, string> = {
+  ADMIN:                     'مدير النظام',
+  GENERAL_SECRETARIAT:       'الأمانة العامة',
+  NATIONAL_LEVEL:            'المستوى القومي',
+  REGION:                    'الولاية',
+  LOCALITY:                  'المحلية',
+  ADMIN_UNIT:                'الوحدة الإدارية',
+  DISTRICT:                  'الحي',
+  USER:                      'عضو',
+  EXPATRIATE_GENERAL:        'المغتربين - عام',
+  EXPATRIATE_NATIONAL_LEVEL: 'المغتربين - المستوى القومي',
+  EXPATRIATE_REGION:         'المغتربين - الإقليم',
+  EXPATRIATE_LOCALITY:       'المغتربين - المحلية',
+  EXPATRIATE_ADMIN_UNIT:     'المغتربين - الوحدة الإدارية',
+  EXPATRIATE_DISTRICT:       'المغتربين - الحي',
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+  active:    'نشط',
+  disabled:  'معطل',
+  suspended: 'موقوف',
+  pending:   'قيد المراجعة',
+};
+
 export function getAdminLevelDisplayName(adminLevel: AdminLevelType): string {
-  const levelNames: Record<AdminLevelType, string> = {
-    'GENERAL_SECRETARIAT': 'الأمانة العامة',
-    'ADMIN': 'مدير النظام',
-    'NATIONAL_LEVEL': 'المستوى القومي',
-    'REGION': 'الولاية',
-    'LOCALITY': 'المحلية',
-    'ADMIN_UNIT': 'الوحدة الإدارية',
-    'DISTRICT': 'الحي',
-    'USER': 'مستخدم',
-    'EXPATRIATE_GENERAL': 'المغتربين - عام',
-    'EXPATRIATE_NATIONAL_LEVEL': 'المغتربين - المستوى القومي',
-    'EXPATRIATE_REGION': 'المغتربين - الإقليم',
-    'EXPATRIATE_LOCALITY': 'المغتربين - المحلية',
-    'EXPATRIATE_ADMIN_UNIT': 'المغتربين - الوحدة الإدارية',
-    'EXPATRIATE_DISTRICT': 'المغتربين - الحي',
-  };
-  return levelNames[adminLevel] || 'غير محدد';
+  return ADMIN_LEVEL_LABELS[adminLevel] || 'غير محدد';
 }
 
 /**
  * Get hierarchy type display name in Arabic
  */
+// Canonical hierarchy type labels (must match Backend & Mobile)
+export const HIERARCHY_TYPE_LABELS: Record<string, string> = {
+  ORIGINAL:   'جغرافي',
+  EXPATRIATE: 'المغتربين',
+  SECTOR:     'القطاع',
+  GLOBAL:     'عالمي',
+};
+
 export function getHierarchyTypeDisplayName(hierarchyType: HierarchyType): string {
-  const names: Record<HierarchyType, string> = {
-    'ORIGINAL': 'جغرافي',
-    'EXPATRIATE': 'المغتربين',
-    'SECTOR': 'القطاع',
-    'GLOBAL': 'عالمي',
-  };
-  return names[hierarchyType] || 'غير محدد';
+  return HIERARCHY_TYPE_LABELS[hierarchyType] || 'غير محدد';
 }

@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  /* Primary color palette */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-  --primary-800: #3730a3;
-  --primary-900: #312e81;
+  /* Primary color palette — aligned with Mobile app (green) */
+  --primary-50: #E8F5E9;
+  --primary-100: #C8E6C9;
+  --primary-200: #A5D6A7;
+  --primary-300: #81C784;
+  --primary-400: #66BB6A;
+  --primary-500: #4CAF50;
+  --primary-600: #2E7D32;
+  --primary-700: #1B5E20;
+  --primary-800: #145214;
+  --primary-900: #0D3B0D;
   
   /* Secondary/accent color */
   --accent-50: #fefce8;
@@ -56,10 +56,10 @@
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
-  --button-primary: #4f46e5;
+  --button-primary: #2E7D32;
   --button-primary-foreground: #ffffff;
-  --button-secondary: #e0e7ff;
-  --button-secondary-foreground: #4338ca;
+  --button-secondary: #E8F5E9;
+  --button-secondary-foreground: #1B5E20;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -69,10 +69,13 @@
   }
 }
 
+/* Import Tajawal — shared font with Mobile app for Arabic-optimized rendering */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Tajawal', Arial, Helvetica, sans-serif;
 }
 
 @layer base {
@@ -83,7 +86,7 @@ body {
 
 @layer components {
   .app-button {
-    @apply flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition-colors;
+    @apply flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors;
   }
   
   .app-button-primary {
@@ -91,7 +94,7 @@ body {
   }
   
   .app-button-secondary {
-    @apply app-button bg-[var(--button-secondary)] text-[var(--button-secondary-foreground)] hover:bg-[var(--primary-200)];
+    @apply app-button bg-[var(--button-secondary)] text-[var(--button-secondary-foreground)] hover:bg-[var(--primary-100)];
   }
   
   .app-button-danger {

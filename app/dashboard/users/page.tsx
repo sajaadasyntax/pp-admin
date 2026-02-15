@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { apiClient } from "../../context/apiContext";
-import RootAdminOnly from "../../components/RootAdminOnly";
+import { RootAdminOnly } from "../../components/RootAdminOnly";
+import { UsersTableBody } from "./UsersTableBody";
 
 interface User {
   id: string;
@@ -12,28 +13,28 @@ interface User {
   mobileNumber: string;
   role: string;
   adminLevel: string;
+  activeHierarchy?: string;
   createdAt: string;
   profile?: {
     firstName?: string;
     lastName?: string;
     status?: string;
   };
-  region?: {
-    id: string;
-    name: string;
-  };
-  locality?: {
-    id: string;
-    name: string;
-  };
-  adminUnit?: {
-    id: string;
-    name: string;
-  };
-  district?: {
-    id: string;
-    name: string;
-  };
+  // Original (geographic) hierarchy
+  region?: { id: string; name: string };
+  locality?: { id: string; name: string };
+  adminUnit?: { id: string; name: string };
+  district?: { id: string; name: string };
+  // Expatriate hierarchy
+  expatriateRegion?: { id: string; name: string };
+  // Sector hierarchy
+  sectorNationalLevel?: { id: string; name: string };
+  sectorRegion?: { id: string; name: string };
+  sectorLocality?: { id: string; name: string };
+  sectorAdminUnit?: { id: string; name: string };
+  sectorDistrict?: { id: string; name: string };
+  // Per-hierarchy status overrides (set by admin)
+  hierarchyStatuses?: Record<string, string>;
 }
 
 interface AdminLevelFilter {
@@ -42,6 +43,14 @@ interface AdminLevelFilter {
 }
 
 export default function UsersPage() {
+  return (
+    <RootAdminOnly>
+      <UsersPageContent />
+    </RootAdminOnly>
+  );
+}
+
+function UsersPageContent() {
   const router = useRouter();
   const { user: currentUser, token } = useAuth();
   const [activeTab, setActiveTab] = useState<"users" | "admins">("users");
@@ -143,6 +152,55 @@ export default function UsersPage() {
     return filter ? filter.label : adminLevel;
   };
 
+  // Get the number of hierarchies a user belongs to
+  const getHierarchyCount = (user: User): number => {
+    let count = 0;
+    if (user.district || user.adminUnit || user.locality || user.region) count++;
+    if (user.expatriateRegion) count++;
+    if (user.sectorDistrict || user.sectorAdminUnit || user.sectorLocality || user.sectorRegion || user.sectorNationalLevel) count++;
+    return count;
+  };
+
+  // Get expatriate hierarchy path
+  const getExpatriateText = (user: User): string => {
+    return user.expatriateRegion?.name || "";
+  };
+
+  // Get sector hierarchy path
+  const getSectorText = (user: User): string => {
+    const parts: string[] = [];
+    if (user.sectorNationalLevel) parts.push(user.sectorNationalLevel.name);
+    if (user.sectorRegion) parts.push(user.sectorRegion.name);
+    if (user.sectorLocality) parts.push(user.sectorLocality.name);
+    if (user.sectorAdminUnit) parts.push(user.sectorAdminUnit.name);
+    if (user.sectorDistrict) parts.push(user.sectorDistrict.name);
+    return parts.join(" > ");
+  };
+
+  // Map active hierarchy key to Arabic label
+  // Canonical labels — must match Backend & Mobile terminology
+  const getActiveHierarchyLabel = (key?: string): string => {
+    switch (key) {
+      case "ORIGINAL": return "جغرافي";
+      case "EXPATRIATE": return "المغتربين";
+      case "SECTOR": return "القطاع";
+      default: return "جغرافي";
+    }
+  };
+
+  // Per-hierarchy status badge color
+  const getHierarchyStatusColor = (status?: string): string => {
+    switch (status) {
+      case "suspended":
+      case "disabled":
+        return "bg-[var(--error-100)] text-[var(--error-600)]";
+      case "active":
+        return "bg-[var(--success-100)] text-[var(--success-600)]";
+      default:
+        return "bg-[var(--neutral-100)] text-[var(--neutral-600)]";
+    }
+  };
+
   // Handle user status toggle
   const handleToggleStatus = async (userId: string) => {
     if (!token) return;
@@ -211,20 +269,17 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <RootAdminOnly>
-        <div className="flex h-screen items-center justify-center">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
-            <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
-          </div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--primary-500)] border-t-transparent"></div>
+          <div className="text-xl text-[var(--neutral-600)]">جاري التحميل...</div>
         </div>
-      </RootAdminOnly>
+      </div>
     );
   }
 
   return (
-    <RootAdminOnly>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-[var(--neutral-900)]">إدارة المستخدمين</h1>
@@ -318,16 +373,16 @@ export default function UsersPage() {
                     الاسم
                   </th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
-                    البريد الإلكتروني
-                  </th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
                     رقم الهاتف
                   </th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
                     المستوى الإداري
                   </th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
-                    التسلسل الإداري
+                    التسلسلات الهرمية
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
+                    النشط
                   </th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-[var(--neutral-600)]">
                     الحالة
@@ -341,75 +396,23 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-[var(--neutral-500)]">
-                      لا توجد نتائج
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-[var(--neutral-200)]">
-                      <td className="px-4 py-2">
-                        {user.profile?.firstName && user.profile?.lastName
-                          ? `${user.profile.firstName} ${user.profile.lastName}`
-                          : user.email}
-                      </td>
-                      <td className="px-4 py-2">{user.email || "غير محدد"}</td>
-                      <td className="px-4 py-2">{user.mobileNumber || "غير محدد"}</td>
-                      <td className="px-4 py-2">
-                        <span className="rounded-full bg-[var(--primary-100)] px-2 py-1 text-xs font-medium text-[var(--primary-600)]">
-                          {getAdminLevelLabel(user.adminLevel)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span className="text-sm text-blue-600">{getHierarchyText(user)}</span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            user.profile?.status === "active"
-                              ? "bg-[var(--success-100)] text-[var(--success-600)]"
-                              : "bg-[var(--error-100)] text-[var(--error-600)]"
-                          }`}
-                        >
-                          {user.profile?.status === "active" ? "نشط" : "معطل"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        {new Date(user.createdAt).toLocaleDateString("ar-EG")}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleToggleStatus(user.id)}
-                            className="app-button-secondary text-xs"
-                          >
-                            {user.profile?.status === "active" ? "تعطيل" : "تفعيل"}
-                          </button>
-                          <button
-                            onClick={() => handlePasswordReset(user.id)}
-                            className="app-button-secondary text-xs"
-                          >
-                            إعادة تعيين
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="app-button-danger text-xs"
-                          >
-                            حذف
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                <UsersTableBody
+                  users={filteredUsers}
+                  getHierarchyCount={getHierarchyCount}
+                  getHierarchyText={getHierarchyText}
+                  getExpatriateText={getExpatriateText}
+                  getSectorText={getSectorText}
+                  getAdminLevelLabel={getAdminLevelLabel}
+                  getActiveHierarchyLabel={getActiveHierarchyLabel}
+                  onToggleStatus={handleToggleStatus}
+                  onPasswordReset={handlePasswordReset}
+                  onDeleteUser={handleDeleteUser}
+                />
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-    </RootAdminOnly>
+    </div>
   );
 }
 

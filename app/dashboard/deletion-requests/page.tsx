@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { DeletionRequest } from "../../types";
 import { apiClient } from "../../context/apiContext";
-import RootAdminOnly from "../../components/RootAdminOnly";
+import { RootAdminOnly } from "../../components/RootAdminOnly";
 
 export default function DeletionRequestsPage() {
   return (

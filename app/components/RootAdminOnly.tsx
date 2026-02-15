@@ -19,7 +19,7 @@ const USER_MANAGEMENT_LEVELS = [
   'DISTRICT'
 ];
 
-export default function RootAdminOnly({ children }: RootAdminOnlyProps) {
+export function RootAdminOnly({ children }: RootAdminOnlyProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 

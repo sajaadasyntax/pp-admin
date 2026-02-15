@@ -131,10 +131,31 @@ export default function UserManagement({
     }
   }, [apiCall, hierarchyId, hierarchyType]);
 
-  // Create new user
+  // Create new user — validation mirrors Backend constraints
   const createUser = async () => {
     if (!newUser.name.trim() || !newUser.email.trim() || !newUser.mobileNumber.trim() || !newUser.password.trim()) {
       setError('جميع الحقول مطلوبة');
+      return;
+    }
+
+    // Password must be at least 6 characters (same as Backend)
+    if (newUser.password.length < 6) {
+      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    // Email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email.trim())) {
+      setError('صيغة البريد الإلكتروني غير صحيحة');
+      return;
+    }
+
+    // Mobile number: must be 9 digits (after stripping prefix)
+    let testMobile = newUser.mobileNumber.trim().replace(/[^\d]/g, '');
+    if (testMobile.startsWith('249')) testMobile = testMobile.substring(3);
+    if (testMobile.length !== 9) {
+      setError('رقم الجوال يجب أن يكون 9 أرقام');
       return;
     }
 

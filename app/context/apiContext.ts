@@ -647,4 +647,43 @@ export const apiClient = {
   
   // Subscription management using the new subscription service
   subscriptions: subscriptionService,
+  
+  // File Manager endpoints (for admin file management)
+  files: {
+    getAllFiles: async (token: string, params?: { category?: string; status?: string; search?: string; page?: number; limit?: number }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.category) searchParams.set('category', params.category);
+      if (params?.status) searchParams.set('status', params.status);
+      if (params?.search) searchParams.set('search', params.search);
+      if (params?.page) searchParams.set('page', String(params.page));
+      if (params?.limit) searchParams.set('limit', String(params.limit));
+      
+      const response = await fetch(`${apiUrl}/uploads/files?${searchParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      return handleResponse(response);
+    },
+    getStats: async (token: string) => {
+      const response = await fetch(`${apiUrl}/uploads/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      return handleResponse(response);
+    },
+    getFileById: async (token: string, fileId: string) => {
+      const response = await fetch(`${apiUrl}/uploads/files/${fileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      return handleResponse(response);
+    },
+    deleteFile: async (token: string, fileId: string, hard = false) => {
+      const url = hard
+        ? `${apiUrl}/uploads/files/${fileId}?hard=true`
+        : `${apiUrl}/uploads/files/${fileId}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      return handleResponse(response);
+    },
+  },
 };
